@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <style>
 /* Layout: one-screen app. Phone = header + tab bar + one full-height panel (map / list / trip) and a bottom sheet for details.
    Wide screens = map on the left, list/trip panel on the right, details slide over the panel.
@@ -259,8 +259,11 @@ select.chip.on{background-color:var(--accent);color:var(--accent-ink);border-col
 body{margin:0}
 [hidden]{display:none!important}
 #map{position:absolute;inset:0;background:var(--water);touch-action:auto;font-family:var(--font-body)}
-.leaflet-tile-pane{filter:grayscale(.45) sepia(.4) saturate(.85) brightness(1.04) contrast(.95)}
-@media (prefers-color-scheme: dark){.leaflet-tile-pane{filter:invert(.9) hue-rotate(180deg) grayscale(.4) sepia(.3) brightness(.85)}}
+.maplibregl-ctrl-group{background:var(--card)!important;border:1px solid var(--line);box-shadow:none!important}
+.maplibregl-ctrl-group button+button{border-top:1px solid var(--line)!important}
+.maplibregl-ctrl-attrib{font-size:10px;background:color-mix(in srgb,var(--card) 85%,transparent)!important}
+.maplibregl-ctrl-attrib a{color:var(--muted)!important}
+.maplibregl-marker{cursor:pointer}
 .lpin{position:relative;width:26px;height:26px}
 .lpin .dot{position:absolute;inset:0;border-radius:50%;display:grid;place-items:center;color:var(--pin-ink);font-size:12.5px;font-weight:600;border:2.5px solid var(--card);box-shadow:0 2px 6px rgba(58,47,38,.3)}
 .lpin.sel .dot{transform:scale(1.18);box-shadow:0 0 0 3px var(--accent),0 2px 8px rgba(58,47,38,.35)}
@@ -350,7 +353,7 @@ a.fab{text-decoration:none;display:inline-block}
 </div>
 <div class="toast" id="toast" hidden></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script>
 (function(){
 "use strict";
@@ -592,30 +595,63 @@ function renderSheet(){
   el.hidden=false;
 }
 
-// ---------- map (Leaflet) ----------
-const map=L.map("map",{zoomControl:false,attributionControl:true}).setView([22.3,114.172],13);
-L.control.zoom({position:"topright"}).addTo(map);
-L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,
-  attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> 貢獻者'}).addTo(map);
-const pinLayer=L.layerGroup().addTo(map);
-map.on("zoomend",()=>map.getContainer().classList.toggle("show-labels",map.getZoom()>=16));
+// ---------- map (MapLibre + OpenFreeMap, recoloured to milk tea) ----------
+const DARK=window.matchMedia("(prefers-color-scheme: dark)").matches;
+const PAL=DARK?{bg:"#2A231D",water:"#1A2124",park:"#2E3128",bld:"#332B24",road:"#3A3129",casing:"#2A231D",major:"#45392F",rail:"#5A4C40",text:"#B9AC9D",halo:"#2A231D"}
+              :{bg:"#F7F1E7",water:"#D9E2E1",park:"#E9E6D3",bld:"#EFE6D8",road:"#FFFCF7",casing:"#E6DACA",major:"#FFFFFF",rail:"#CDBBA8",text:"#7D6E60",halo:"#F7F1E7"};
+const map=new maplibregl.Map({container:"map",style:"https://tiles.openfreemap.org/styles/positron",center:[114.172,22.30],zoom:12.3,
+  attributionControl:{compact:true},localIdeographFontFamily:"'PingFang TC','Noto Sans TC','Microsoft JhengHei',sans-serif"});
+map.addControl(new maplibregl.NavigationControl({showCompass:false}),"top-right");
+function tint(){
+  const set=(id,k,v)=>{try{map.setPaintProperty(id,k,v)}catch(e){}};
+  const zh=["coalesce",["get","name:zh-Hant"],["get","name:zh"],["get","name"]];
+  for(const l of map.getStyle().layers){const id=l.id;
+    if(l.type==="background")set(id,"background-color",PAL.bg);
+    else if(l.type==="fill"){
+      if(/water/.test(id))set(id,"fill-color",PAL.water);
+      else if(/residential|landuse/.test(id))map.setLayoutProperty(id,"visibility","none");
+      else if(/building/.test(id)){set(id,"fill-color",PAL.bld);set(id,"fill-opacity",.6)}
+      else if(/park|wood|grass|landcover|aeroway/.test(id)){set(id,"fill-color",PAL.park);set(id,"fill-opacity",.7)}
+      else set(id,"fill-color",PAL.bg);}
+    else if(l.type==="line"){
+      if(/boundary/.test(id))map.setLayoutProperty(id,"visibility","none");
+      else if(/waterway/.test(id))set(id,"line-color",PAL.water);
+      else if(/rail/.test(id))set(id,"line-color",PAL.rail);
+      else if(/casing/.test(id))set(id,"line-color",PAL.casing);
+      else if(/major|motorway/.test(id))set(id,"line-color",PAL.major);
+      else set(id,"line-color",PAL.road);}
+    else if(l.type==="symbol"){
+      set(id,"text-color",PAL.text);set(id,"text-halo-color",PAL.halo);set(id,"text-halo-width",1.4);
+      if(/poi/.test(id)&&!/station|rail/.test(id))map.setLayoutProperty(id,"visibility","none");
+      else if(/place|station|rail|water_name/.test(id)){try{map.setLayoutProperty(id,"text-field",zh)}catch(e){}}
+    }
+  }
+}
+map.on("load",tint);
+map.on("zoom",()=>map.getContainer().classList.toggle("show-labels",map.getZoom()>=15.3));
 map.on("click",()=>{if(S.sel)select(null)});
+let markers=[];
+function addMarker(lat,lng,html,onClick,z){
+  const el=document.createElement("div");el.innerHTML=html;el.style.zIndex=z||1;
+  el.addEventListener("click",e=>{e.stopPropagation();onClick()});
+  const m=new maplibregl.Marker({element:el,anchor:"center"}).setLngLat([lng,lat]).addTo(map);markers.push(m);
+}
 function renderPins(){
-  pinLayer.clearLayers();const now=hkNow();
+  markers.forEach(m=>m.remove());markers=[];const now=hkNow();
   const arr=visible();
   arr.filter(s=>s.lat!=null).forEach(s=>{
     const g=CAT[s.cat].g,k=status(s,now).k,sel=s.id===S.sel;
-    const html=`<div class="lpin${sel?" sel":""}${s.status==="done"?" done":""}${k==="closed"?" closedNow":""}"><span class="dot" style="background:var(${GROUPS[g].v})">${CAT[s.cat].ch}</span>${s.mine||s.status==="want"?'<i class="badge"></i>':""}<span class="lbl">${esc(s.name.replace(/（.*?）/g,""))}</span></div>`;
-    L.marker([s.lat,s.lng],{icon:L.divIcon({className:"",html,iconSize:[26,26],iconAnchor:[13,13]}),zIndexOffset:sel?1000:0,title:s.name,keyboard:true}).on("click",e=>{L.DomEvent.stopPropagation(e);select(s.id,false)}).addTo(pinLayer);
+    addMarker(s.lat,s.lng,`<div class="lpin${sel?" sel":""}${s.status==="done"?" done":""}${k==="closed"?" closedNow":""}" title="${esc(s.name)}"><span class="dot" style="background:var(${GROUPS[g].v})">${CAT[s.cat].ch}</span>${s.mine||s.status==="want"?'<i class="badge"></i>':""}<span class="lbl">${esc(s.name.replace(/（.*?）/g,""))}</span></div>`,()=>select(s.id,false),sel?3:1);
   });
-  if(S.hotel){const h=S.hotel;L.marker([h.lat,h.lng],{icon:L.divIcon({className:"",html:`<div class="lpin hotel${S.sel==="__hotel"?" sel":""}"><span class="dot">宿</span><span class="lbl">${esc(h.short)}</span></div>`,iconSize:[26,26],iconAnchor:[13,13]}),zIndexOffset:900,title:h.name}).on("click",e=>{L.DomEvent.stopPropagation(e);select("__hotel",false)}).addTo(pinLayer)}
+  if(S.hotel){const h=S.hotel;addMarker(h.lat,h.lng,`<div class="lpin hotel${S.sel==="__hotel"?" sel":""}" title="${esc(h.name)}"><span class="dot">宿</span><span class="lbl">${esc(h.short)}</span></div>`,()=>select("__hotel",false),2)}
   const missing=arr.filter(s=>s.lat==null).length,note=$("mapNote");
   if(S.f.day&&S.f.day!=="none"){note.hidden=false;note.innerHTML=`只顯示 ${dayLabel(S.f.day)} 的店 · <a href="#" id="clearDay">顯示全部</a>`}
   else if(missing){note.hidden=false;note.textContent=missing+" 家沒有座標，只在清單裡"}else note.hidden=true;
 }
 function fitVisible(first){
-  const pts=visible().filter(s=>s.lat!=null).map(s=>[s.lat,s.lng]);if(S.hotel)pts.push([S.hotel.lat,S.hotel.lng]);
-  if(pts.length)map.fitBounds(pts,{padding:[30,30],maxZoom:16,animate:!first});
+  const pts=visible().filter(s=>s.lat!=null).map(s=>[s.lng,s.lat]);if(S.hotel)pts.push([S.hotel.lng,S.hotel.lat]);
+  if(!pts.length)return;const b=new maplibregl.LngLatBounds(pts[0],pts[0]);pts.forEach(p=>b.extend(p));
+  map.fitBounds(b,{padding:{top:60,bottom:90,left:30,right:60},maxZoom:15.5,duration:first?0:600});
 }
 $("legend").innerHTML=Object.values(GROUPS).map(g=>`<span><i style="background:var(${g.v})"></i>${g.label}</span>`).join("")+`<span><i style="background:var(--ink);border-radius:3px"></i>住宿</span>`;
 
@@ -624,10 +660,10 @@ const wide=()=>window.matchMedia("(min-width:900px)").matches;
 function select(id,fly){
   S.sel=id;renderList();renderPins();renderSheet();
   const s=id==="__hotel"?S.hotel:S.byId[id];
-  if(s&&fly&&s.lat!=null&&(wide()||S.tab==="map"))map.setView([s.lat,s.lng],Math.max(map.getZoom(),16));
+  if(s&&fly&&s.lat!=null&&(wide()||S.tab==="map"))map.easeTo({center:[s.lng,s.lat],zoom:Math.max(map.getZoom(),15.5)});
   if(s&&wide()){const r=$("main").getBoundingClientRect();document.documentElement.style.setProperty("--sheet-top",r.top+"px")}
 }
-function setTab(t){S.tab=t;$("main").dataset.tab=t;document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t));if(t==="map")setTimeout(()=>map.invalidateSize(),0)}
+function setTab(t){S.tab=t;$("main").dataset.tab=t;document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t));if(t==="map")setTimeout(()=>map.resize(),0)}
 function setSide(t){S.side=t;$("main").dataset.side=t;document.querySelectorAll(".sidetabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.side===t))}
 document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
 document.querySelectorAll(".sidetabs button").forEach(b=>b.onclick=()=>setSide(b.dataset.side));
