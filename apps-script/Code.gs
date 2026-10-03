@@ -7,7 +7,7 @@
  *   action=delete   刪除某一列
  */
 const SHEET_ID = '1V6pm0Qq2RDSsaduO5p4c1hOy9V2_aJjzhmDVqiwUL1Q';
-const EXTRA_COLUMNS = ['標籤'];
+const EXTRA_COLUMNS = ['標籤', '想吃的人'];
 const TEXT_COLUMNS = ['開門', '打烊', '週末開門', '週末打烊', '電話', '地鐵出口'];
 
 function doGet(e) {

@@ -288,6 +288,11 @@ a.fab{text-decoration:none;display:inline-block}
 .tagline{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
 .tagline .tag{font-size:11px}
 .hidden-input{display:none}
+.people{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.people button{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:9px 4px;font-weight:700;font-size:15px;color:var(--muted)}
+.people button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.wantline{font-size:12.5px;color:var(--accent);font-weight:600}
+.lpin .cnt{position:absolute;right:-6px;top:-6px;min-width:16px;height:16px;border-radius:8px;background:var(--star);color:#3A2F26;font-size:10.5px;font-weight:700;display:grid;place-items:center;padding:0 3px;border:1.5px solid var(--card)}
 .modal{z-index:2000!important}.sheet{z-index:1500!important}.fab{z-index:1200!important}.timepop{z-index:2500!important}.toast{z-index:3000!important}
 </style>
 
@@ -372,9 +377,10 @@ a.fab{text-decoration:none;display:inline-block}
       </div>
       <label class="f"><span>必吃</span><input id="f_must" maxlength="80" placeholder="例：菠蘿油、奶茶"></label>
       <label class="f"><span>備註</span><input id="f_note" maxlength="200" placeholder="例：要排隊、只收現金"></label>
-      <div class="f"><span>狀態</span><div class="chipwrap" id="f_status"></div></div>
+      <div class="f"><span>誰想吃（可多選）</span><div class="people" id="f_people"></div></div>
+      <div class="f"><span>吃過了嗎</span><div class="chipwrap" id="f_status"></div></div>
       <div class="f"><span>排進哪一天</span><div class="chipwrap" id="f_day"></div></div>
-      <label class="f"><span>你的名字</span><input id="f_by" maxlength="20" placeholder="方便大家知道是誰加的"></label>
+      <label class="f"><span>誰加的</span><select id="f_by"><option value="">（不填）</option><option>瑜</option><option>翎</option><option>芷</option><option>佩</option></select></label>
       <div class="err" id="f_err" hidden></div>
     </form>
     <footer>
@@ -410,6 +416,7 @@ const EDIT_URL="https://docs.google.com/spreadsheets/d/"+SHEET_ID+"/edit#gid=0";
 const CACHE="hk3day-sheet-cache-v1";
 // 試算表後台（Apps Script 網頁應用程式）的網址；留白時「新增」會改成打開試算表
 const SCRIPT_URL="https://script.google.com/macros/s/AKfycbx_iARq0eE6Pd2B7O78Df3pjRqkygORn623cFDKe5CQnGULJeM6I1KALTctvKPSEutNjw/exec";
+const PEOPLE=["瑜","翎","芷","佩"];
 const TAGS=["排隊名店","米其林","只收現金","宵夜","早餐","外帶","打卡","要訂位","伴手禮","甜點"];
 const STN_AREA={TST:"尖沙咀・佐敦",ETS:"尖沙咀・佐敦",JOR:"尖沙咀・佐敦",AUS:"尖沙咀・佐敦",HUH:"尖沙咀・佐敦",KOW:"尖沙咀・佐敦",
  YMT:"油麻地・旺角・太子",MOK:"油麻地・旺角・太子",PRE:"油麻地・旺角・太子",MKK:"油麻地・旺角・太子",OLY:"油麻地・旺角・太子",
@@ -437,7 +444,7 @@ const STN={
 const STN_LIST=Object.entries(STN).map(([k,[n,lat,lng]])=>({k,n,lat,lng}));
 
 const S={confirmDel:false,shops:[],byId:{},hotel:null,loaded:false,sel:null,tab:"map",side:"list",q:"",near:"",
-  f:{open:false,want:false,done:false,mine:false,cat:"",area:"",day:"",tag:""},time:{mode:"now",dow:6,hm:"19:00"},lastLoad:0};
+  f:{open:false,want:false,done:false,mine:false,cat:"",area:"",day:"",tag:"",who:""},time:{mode:"now",dow:6,hm:"19:00"},lastLoad:0};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
@@ -490,8 +497,9 @@ function rowsToData(rows){
     const o=tm(g(r,"開門")),c=tm(g(r,"打烊")),wo=tm(g(r,"週末開門")),wc=tm(g(r,"週末打烊"));const cl=closedSet(g(r,"公休日"));
     let sched=null;if(o&&c){sched=DOW.map((_,d)=>cl.has(d)?"":((d===0||d===6)&&wo&&wc?wo+"-"+wc:o+"-"+c))}
     const st=g(r,"狀態");
+    const wants=PEOPLE.filter(p=>g(r,"想吃的人").includes(p));
     shops.push(Object.assign(base,{raw:{open:o,close:c,closed:[...cl]},cat:CAT[cat]?cat:"小吃",area:AREAS.includes(g(r,"區域"))?g(r,"區域"):"其他",sched,
-      status:/吃過/.test(st)?"done":/想吃/.test(st)?"want":"",day:dayKey(g(r,"哪一天")),mine:/自己/.test(g(r,"來源"))}));
+      wants,status:/吃過/.test(st)?"done":(wants.length||/想吃/.test(st))?"want":"",day:dayKey(g(r,"哪一天")),mine:/自己/.test(g(r,"來源"))}));
   });
   return {shops,hotel};
 }
@@ -564,6 +572,7 @@ function matches(s,now){
   if(S.q){const q=S.q.toLowerCase();const hay=(s.name+" "+(s.tags||[]).join(" ")+" "+s.must+" "+s.addr+" "+s.note+" "+s.cat+" "+s.area+" "+(s.near?s.near.st.n:"")).toLowerCase();if(!hay.includes(q))return false}
   if(f.cat&&s.cat!==f.cat)return false;
   if(f.tag&&!(s.tags||[]).includes(f.tag))return false;
+  if(f.who&&!(s.wants||[]).includes(f.who))return false;
   if(f.area&&s.area!==f.area)return false;
   if(f.day&&(s.day||"")!==(f.day==="none"?"":f.day))return false;
   if(f.want&&s.status!=="want")return false;
@@ -595,6 +604,7 @@ function renderChips(){
   $("chips").innerHTML=b("open","營業中")+b("want","想吃")+b("done","吃過")+b("mine","自己想吃 ★")
    +sel("cat","全部類型",CATS.map(c=>[c[0],c[0]]))+sel("area","全部區域",AREAS.map(a=>[a,a]))
    +sel("day","全部日子",[["D1","Day 1"],["D2","Day 2 迪士尼"],["D3","Day 3"],["none","未排"]])
+   +sel("who","誰想吃",PEOPLE.map(p=>[p,p+" 想吃的"]))
    +sel("tag","全部標籤",[...new Set(TAGS.concat(...S.shops.map(s=>s.tags||[])))].map(t=>[t,t]));
 }
 function renderNear(){
@@ -612,7 +622,7 @@ function renderList(){
   if(!arr.length){$("list").innerHTML=`<li class="empty"><b>沒有符合條件的店</b>試試取消一些篩選。</li>`;return}
   $("list").innerHTML=arr.map(s=>{const st=status(s,now);const h=fromHotel(s);
     return `<li><button type="button" class="item${S.sel===s.id?" sel":""}${s.status==="done"?" done":""}" data-open="${esc(s.id)}">${glyph(s)}<span style="min-width:0">
-      <h3>${esc(s.name)} <span class="pill ${st.k}">${esc(st.t)}</span>${s.status==="want"?'<span class="tag want">想吃</span>':""}${s.status==="done"?'<span class="tag">吃過 ✓</span>':""}${s.day?`<span class="tag day">${dayLabel(s.day)}</span>`:""}</h3>
+      <h3>${esc(s.name)} <span class="pill ${st.k}">${esc(st.t)}</span>${s.status==="done"?'<span class="tag">吃過 ✓</span>':(s.wants||[]).length?`<span class="tag want">${s.wants.length} 人想吃 · ${s.wants.join("")}</span>`:s.status==="want"?'<span class="tag want">想吃</span>':""}${s.day?`<span class="tag day">${dayLabel(s.day)}</span>`:""}</h3>
       <div class="meta"><span>${stnText(s)}</span>${h!=null?`<span>離飯店 ${fmtDist(h)}</span>`:""}<span>${esc(s.cat)} · ${esc(s.area)}</span></div>
       ${s.must?`<div class="must">${esc(s.must)}</div>`:""}${(s.tags||[]).length?`<div class="tagline">${s.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</div>`:""}</span></button></li>`}).join("");
 }
@@ -657,7 +667,8 @@ function renderSheet(){
     ${s.note?`<div class="row"><span>筆記</span><span class="v">${esc(s.note)}</span></div>`:""}
     ${srcs?`<div class="row"><span>來源</span><span class="v srcs">${srcs}</span></div>`:""}
     ${(s.tags||[]).length?`<div class="row"><span>標籤</span><span class="v tagline">${s.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</span></div>`:""}
-    ${SCRIPT_URL?`<div class="ctl"><label>我們的狀態</label><div class="statusbtns"><button type="button" class="btn" data-qstatus="想吃" aria-pressed="${s.status==="want"}">☆ 想吃</button><button type="button" class="btn" data-qstatus="吃過" aria-pressed="${s.status==="done"}">✓ 吃過了</button></div></div>
+    ${SCRIPT_URL?`<div class="ctl"><label>誰想吃？${(s.wants||[]).length?`<span class="wantline">　${s.wants.length} 人想吃</span>`:""}</label><div class="people">${PEOPLE.map(p=>`<button type="button" data-qwant="${p}" aria-pressed="${(s.wants||[]).includes(p)}">${p}</button>`).join("")}</div>
+      <div class="statusbtns" style="margin-top:6px"><button type="button" class="btn" data-qstatus="吃過" aria-pressed="${s.status==="done"}">✓ 吃過了</button></div></div>
     <div class="ctl"><label>排進哪一天</label><div class="seg wide">${DAYS.map(([k,l])=>`<button type="button" data-qday="${k}" aria-pressed="${(s.day||"")===k}">${k==="D2"?"D2 迪士尼":k?l:"未排"}</button>`).join("")}</div></div>`
     :`<div class="row"><span>狀態</span><span class="v">${s.status==="want"?"想吃":s.status==="done"?"吃過了 ✓":"—"}　·　${dayLabel(s.day)||"還沒排日子"}</span></div>`}
     ${s.by?`<div class="row"><span>新增者</span><span class="v">${esc(s.by)}</span></div>`:""}
@@ -737,7 +748,7 @@ function renderPins(){
   const arr=visible();
   arr.filter(s=>s.lat!=null).forEach(s=>{
     const g=CAT[s.cat].g,k=status(s,now).k,sel=s.id===S.sel;
-    addMarker(s.lat,s.lng,`<div class="lpin${sel?" sel":""}${s.status==="done"?" done":""}${k==="closed"?" closedNow":""}" title="${esc(s.name)}"><span class="dot" style="background:var(${GROUPS[g].v})">${CAT[s.cat].ch}</span>${s.mine||s.status==="want"?'<i class="badge"></i>':""}<span class="lbl">${esc(shortLabel(s.name))}</span></div>`,()=>select(s.id,false),sel?3:1);
+    addMarker(s.lat,s.lng,`<div class="lpin${sel?" sel":""}${s.status==="done"?" done":""}${k==="closed"?" closedNow":""}" title="${esc(s.name)}"><span class="dot" style="background:var(${GROUPS[g].v})">${CAT[s.cat].ch}</span>${(s.wants||[]).length?`<i class="cnt">${s.wants.length}</i>`:(s.mine||s.status==="want")?'<i class="badge"></i>':""}<span class="lbl">${esc(shortLabel(s.name))}</span></div>`,()=>select(s.id,false),sel?3:1);
   });
   if(S.hotel){const h=S.hotel;addMarker(h.lat,h.lng,`<div class="lpin hotel${S.sel==="__hotel"?" sel":""}" title="${esc(h.name)}"><span class="dot">宿</span><span class="lbl">${esc(h.short)}</span></div>`,()=>select("__hotel",false),2)}
   const missing=arr.filter(s=>s.lat==null).length,note=$("mapNote");
@@ -799,16 +810,18 @@ async function api(action,params){
 }
 const DAY_TEXT={D1:"Day 1",D2:"Day 2 迪士尼",D3:"Day 3","":""};
 document.addEventListener("click",async e=>{
-  const qs=e.target.closest("[data-qstatus]"),qd=e.target.closest("[data-qday]");
-  if(!qs&&!qd)return;
+  const qs=e.target.closest("[data-qstatus]"),qd=e.target.closest("[data-qday]"),qw=e.target.closest("[data-qwant]");
+  if(!qs&&!qd&&!qw)return;
   const s=S.byId[S.sel];if(!s)return;
   let fields={};
-  if(qs){const v=qs.dataset.qstatus;const cur=s.status==="want"?"想吃":s.status==="done"?"吃過":"";fields["狀態"]=cur===v?"":v;s.status=fields["狀態"]==="想吃"?"want":fields["狀態"]==="吃過"?"done":""}
+  if(qw){const p=qw.dataset.qwant;const set=new Set(s.wants||[]);set.has(p)?set.delete(p):set.add(p);s.wants=PEOPLE.filter(x=>set.has(x));
+    fields["想吃的人"]=s.wants.join("、");if(s.status!=="done"){s.status=s.wants.length?"want":"";fields["狀態"]=s.wants.length?"想吃":""}}
+  if(qs){const done=s.status!=="done";s.status=done?"done":(s.wants.length?"want":"");fields["狀態"]=done?"吃過":(s.wants.length?"想吃":"")}
   if(qd){fields["哪一天"]=DAY_TEXT[qd.dataset.qday];s.day=qd.dataset.qday}
   renderAll();
   try{await api("update",{data:JSON.stringify({row:s.row,id:s.id,fields})});toast("已存到試算表")}catch(err){toast("儲存失敗："+err.message);load(false)}
 });
-const FF={editing:null,cat:"",area:"",tags:new Set(),closed:new Set(),status:"想吃",day:"",lat:null,lng:null,link:""};
+const FF={wants:new Set(),editing:null,cat:"",area:"",tags:new Set(),closed:new Set(),status:"想吃",day:"",lat:null,lng:null,link:""};
 const PRESETS=[["早餐・茶餐廳","07:00","18:00"],["午晚餐","11:00","22:00"],["下午茶・甜點","12:00","21:00"],["宵夜","18:00","02:00"],["不確定","",""]];
 function chips(id,items,isOn,onTap){const el=$(id);el.innerHTML=items.map(([v,l])=>`<button type="button" class="chip" data-v="${esc(v)}" aria-pressed="${isOn(v)}">${esc(l)}</button>`).join("");el.onclick=ev=>{const b=ev.target.closest("[data-v]");if(b){onTap(b.dataset.v);}}}
 function renderForm(){
@@ -816,7 +829,9 @@ function renderForm(){
   chips("f_areas",AREAS.map(a=>[a,a]),v=>FF.area===v,v=>{FF.area=v;renderForm()});
   chips("f_tags",TAGS.map(t=>[t,t]),v=>FF.tags.has(v),v=>{FF.tags.has(v)?FF.tags.delete(v):FF.tags.add(v);renderForm()});
   chips("f_presets",PRESETS.map(p=>[p[0],p[0]]),()=>false,v=>{const p=PRESETS.find(x=>x[0]===v);$("f_open").value=p[1];$("f_close").value=p[2]});
-  chips("f_status",[["想吃","想吃"],["吃過","吃過了"],["","先放著"]],v=>FF.status===v,v=>{FF.status=v;renderForm()});
+  chips("f_status",[["吃過","吃過了"]],v=>FF.status==="吃過",()=>{FF.status=FF.status==="吃過"?"":"吃過";renderForm()});
+  $("f_people").innerHTML=PEOPLE.map(p=>`<button type="button" data-p="${p}" aria-pressed="${FF.wants.has(p)}">${p}</button>`).join("");
+  $("f_people").onclick=ev=>{const b=ev.target.closest("[data-p]");if(!b)return;FF.wants.has(b.dataset.p)?FF.wants.delete(b.dataset.p):FF.wants.add(b.dataset.p);renderForm()};
   chips("f_day",[["","未排"],["D1","Day 1"],["D2","Day 2 迪士尼"],["D3","Day 3"]],v=>FF.day===v,v=>{FF.day=v;renderForm()});
   $("f_dows").innerHTML=DOW.map((d,i)=>`<button type="button" data-dow="${i}" aria-pressed="${FF.closed.has(i)}">${d}</button>`).join("");
 }
@@ -824,7 +839,7 @@ $("f_dows").addEventListener("click",e=>{const b=e.target.closest("[data-dow]");
 function openForm(shop){
   const e=shop||null;
   Object.assign(FF,{editing:e,cat:e?e.cat:"",area:e?e.area:"",tags:new Set(e?e.tags:[]),closed:new Set(e&&e.raw?e.raw.closed:[]),
-    status:e?(e.status==="want"?"想吃":e.status==="done"?"吃過":""):"想吃",day:e?e.day||"":"",lat:e?e.lat:null,lng:e?e.lng:null,link:e?e.link:""});
+    status:e&&e.status==="done"?"吃過":"",wants:new Set(e?e.wants||[]:(lsGet("hk3day-by")&&PEOPLE.includes(lsGet("hk3day-by"))?[lsGet("hk3day-by")]:[])),day:e?e.day||"":"",lat:e?e.lat:null,lng:e?e.lng:null,link:e?e.link:""});
   $("f_url").value="";$("f_name").value=e?e.name:"";$("f_addr").value=e?e.addr:"";
   $("f_open").value=e&&e.raw?e.raw.open:"";$("f_close").value=e&&e.raw?e.raw.close:"";
   $("f_must").value=e?e.must:"";$("f_note").value=e?e.note:"";
@@ -870,7 +885,7 @@ $("f_save").onclick=async()=>{
   const d={"店名":name,"類型":FF.cat,"區域":FF.area||"其他","地址":$("f_addr").value.trim(),"緯度":FF.lat==null?"":FF.lat,"經度":FF.lng==null?"":FF.lng,
     "Google 地圖連結":FF.link,"開門":o,"打烊":c,"公休日":closed,
     "營業時間說明":o&&c?((closed?"":"每日 ")+o+"–"+c+(closed?"，週"+[...closed].join("、")+"休":"")):"營業時間待確認",
-    "必吃":$("f_must").value.trim(),"備註":$("f_note").value.trim(),"來源":"網頁新增","狀態":FF.status,"哪一天":DAY_TEXT[FF.day],"新增者":by,"標籤":[...FF.tags].join("、")};
+    "必吃":$("f_must").value.trim(),"備註":$("f_note").value.trim(),"來源":"網頁新增","狀態":FF.status==="吃過"?"吃過":(FF.wants.size?"想吃":""),"想吃的人":PEOPLE.filter(p=>FF.wants.has(p)).join("、"),"哪一天":DAY_TEXT[FF.day],"新增者":by,"標籤":[...FF.tags].join("、")};
   const b=$("f_save");b.disabled=true;
   try{
     if(FF.editing){
