@@ -259,8 +259,8 @@ select.chip.on{background-color:var(--accent);color:var(--accent-ink);border-col
 body{margin:0}
 [hidden]{display:none!important}
 #map{position:absolute;inset:0;background:var(--water);touch-action:auto;font-family:var(--font-body)}
-.leaflet-tile-pane{filter:sepia(.28) saturate(.85) brightness(1.02)}
-@media (prefers-color-scheme: dark){.leaflet-tile-pane{filter:sepia(.2) brightness(.95)}}
+.leaflet-tile-pane{filter:grayscale(.45) sepia(.4) saturate(.85) brightness(1.04) contrast(.95)}
+@media (prefers-color-scheme: dark){.leaflet-tile-pane{filter:invert(.9) hue-rotate(180deg) grayscale(.4) sepia(.3) brightness(.85)}}
 .lpin{position:relative;width:26px;height:26px}
 .lpin .dot{position:absolute;inset:0;border-radius:50%;display:grid;place-items:center;color:var(--pin-ink);font-size:12.5px;font-weight:600;border:2.5px solid var(--card);box-shadow:0 2px 6px rgba(58,47,38,.3)}
 .lpin.sel .dot{transform:scale(1.18);box-shadow:0 0 0 3px var(--accent),0 2px 8px rgba(58,47,38,.35)}
@@ -595,9 +595,8 @@ function renderSheet(){
 // ---------- map (Leaflet) ----------
 const map=L.map("map",{zoomControl:false,attributionControl:true}).setView([22.3,114.172],13);
 L.control.zoom({position:"topright"}).addTo(map);
-const dark=window.matchMedia("(prefers-color-scheme: dark)").matches;
-L.tileLayer("https://{s}.basemaps.cartocdn.com/"+(dark?"dark_all":"rastertiles/voyager")+"/{z}/{x}/{y}{r}.png",{maxZoom:19,subdomains:"abcd",
-  attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'}).addTo(map);
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,
+  attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> 貢獻者'}).addTo(map);
 const pinLayer=L.layerGroup().addTo(map);
 map.on("zoomend",()=>map.getContainer().classList.toggle("show-labels",map.getZoom()>=16));
 map.on("click",()=>{if(S.sel)select(null)});
