@@ -463,12 +463,24 @@ function tm(v){ // "7:00", "07:00:00", "下午 7:00" -> "HH:MM"
 }
 function closedSet(v){const s=new Set();String(v||"").replace(/週|星期|禮拜/g,"").split("").forEach(ch=>{const i=DOW.indexOf(ch==="天"?"日":ch);if(i>=0)s.add(i)});return s}
 function dayKey(v){v=String(v||"");if(/1|一/.test(v))return "D1";if(/2|二|迪士尼/.test(v))return "D2";if(/3|三/.test(v))return "D3";return ""}
+// Google 分享連結常把「地址＋店名」黏在一起，這裡把地址部分去掉
+function cleanName(name,addr){
+  let n=String(name||"").trim();
+  if(!/號/.test(n)||n.length<12)return n;
+  n=n.slice(n.lastIndexOf("號")+1);
+  const tokens=new Set();
+  String(addr||"").split(/[\s,，]+/).forEach(a=>{(a.match(/[^\s號]{1,10}?(大廈|中心|廣場|商場|大樓|花園|酒店|商業大廈)/g)||[]).forEach(t=>tokens.add(t.replace(/^.*號/,"")))});
+  [...tokens].sort((a,b)=>b.length-a.length).forEach(t=>{if(t)n=n.split(t).join("")});
+  n=n.replace(/(地下|地庫|低層|高層|閣樓|[一二三四五六七八九十\d]+樓|[A-Z]?\d*[A-Z]?號?[舖鋪]|及|和|、)/g,"").trim();
+  return n||String(name);
+}
+function shortLabel(n){n=n.replace(/（.*?）/g,"");return n.length>10?n.slice(0,10)+"…":n}
 function rowsToData(rows){
   const H=rows[0].map(h=>h.trim());const col=n=>H.indexOf(n);
   const g=(r,n)=>{const i=col(n);return i<0?"":String(r[i]||"").trim()};
   const shops=[];let hotel=null;
   rows.slice(1).forEach((r,i)=>{
-    const name=g(r,"店名");if(!name)return;
+    const name=cleanName(g(r,"店名"),g(r,"地址"));if(!name)return;
     const lat=parseFloat(g(r,"緯度")),lng=parseFloat(g(r,"經度"));
     const ok=isFinite(lat)&&isFinite(lng)&&lat>22.1&&lat<22.6&&lng>113.8&&lng<114.5;
     const base={id:g(r,"編號")||("row"+(i+2)),row:i+2,tags:g(r,"標籤").split(/[、,，\s]+/).filter(Boolean),name,addr:g(r,"地址"),lat:ok?lat:null,lng:ok?lng:null,link:g(r,"Google 地圖連結"),
@@ -723,7 +735,7 @@ function renderPins(){
   const arr=visible();
   arr.filter(s=>s.lat!=null).forEach(s=>{
     const g=CAT[s.cat].g,k=status(s,now).k,sel=s.id===S.sel;
-    addMarker(s.lat,s.lng,`<div class="lpin${sel?" sel":""}${s.status==="done"?" done":""}${k==="closed"?" closedNow":""}" title="${esc(s.name)}"><span class="dot" style="background:var(${GROUPS[g].v})">${CAT[s.cat].ch}</span>${s.mine||s.status==="want"?'<i class="badge"></i>':""}<span class="lbl">${esc(s.name.replace(/（.*?）/g,""))}</span></div>`,()=>select(s.id,false),sel?3:1);
+    addMarker(s.lat,s.lng,`<div class="lpin${sel?" sel":""}${s.status==="done"?" done":""}${k==="closed"?" closedNow":""}" title="${esc(s.name)}"><span class="dot" style="background:var(${GROUPS[g].v})">${CAT[s.cat].ch}</span>${s.mine||s.status==="want"?'<i class="badge"></i>':""}<span class="lbl">${esc(shortLabel(s.name))}</span></div>`,()=>select(s.id,false),sel?3:1);
   });
   if(S.hotel){const h=S.hotel;addMarker(h.lat,h.lng,`<div class="lpin hotel${S.sel==="__hotel"?" sel":""}" title="${esc(h.name)}"><span class="dot">宿</span><span class="lbl">${esc(h.short)}</span></div>`,()=>select("__hotel",false),2)}
   const missing=arr.filter(s=>s.lat==null).length,note=$("mapNote");
@@ -819,7 +831,7 @@ $("f_resolve").onclick=async()=>{
   const b=$("f_resolve");b.disabled=true;showFound("查詢中…");
   try{
     const r=await api("resolve",{url:v});
-    if(r.name&&!$("f_name").value.trim())$("f_name").value=r.name;
+    if(r.name&&!$("f_name").value.trim())$("f_name").value=cleanName(r.name,r.address);
     if(r.address&&!$("f_addr").value.trim())$("f_addr").value=r.address;
     FF.link=r.url||v;
     if(typeof r.lat==="number"&&typeof r.lng==="number"){
