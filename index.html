@@ -605,7 +605,7 @@ map.addControl(new maplibregl.NavigationControl({showCompass:false}),"top-right"
 function tint(){
   const set=(id,k,v)=>{try{map.setPaintProperty(id,k,v)}catch(e){}};
   const zh=["coalesce",["get","name:zh-Hant"],["get","name:zh"],["get","name"]];
-  for(const l of map.getStyle().layers){const id=l.id;
+  for(const l of map.getStyle().layers){const id=l.id;try{
     if(l.type==="background")set(id,"background-color",PAL.bg);
     else if(l.type==="fill"){
       if(/water/.test(id))set(id,"fill-color",PAL.water);
@@ -625,9 +625,13 @@ function tint(){
       if(/poi/.test(id)&&!/station|rail/.test(id))map.setLayoutProperty(id,"visibility","none");
       else if(/place|station|rail|water_name/.test(id)){try{map.setLayoutProperty(id,"text-field",zh)}catch(e){}}
     }
+    }catch(e){console.warn("tint",id,e)}
   }
 }
-map.on("load",tint);
+let tinted=false;
+function tintOnce(){if(tinted||!map.isStyleLoaded())return;tinted=true;tint()}
+map.on("style.load",()=>{tinted=false;tintOnce()});map.on("load",tintOnce);map.on("idle",tintOnce);
+window.__map=map;
 map.on("zoom",()=>map.getContainer().classList.toggle("show-labels",map.getZoom()>=15.3));
 map.on("click",()=>{if(S.sel)select(null)});
 let markers=[];
