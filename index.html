@@ -599,38 +599,36 @@ function renderSheet(){
 const DARK=window.matchMedia("(prefers-color-scheme: dark)").matches;
 const PAL=DARK?{bg:"#2A231D",water:"#1A2124",park:"#2E3128",bld:"#332B24",road:"#3A3129",casing:"#2A231D",major:"#45392F",rail:"#5A4C40",text:"#B9AC9D",halo:"#2A231D"}
               :{bg:"#F7F1E7",water:"#D9E2E1",park:"#E9E6D3",bld:"#EFE6D8",road:"#FFFCF7",casing:"#E6DACA",major:"#FFFFFF",rail:"#CDBBA8",text:"#7D6E60",halo:"#F7F1E7"};
-const map=new maplibregl.Map({container:"map",style:"https://tiles.openfreemap.org/styles/positron",center:[114.172,22.30],zoom:12.3,
+const map=new maplibregl.Map({container:"map",style:{version:8,sources:{},layers:[{id:"bg",type:"background",paint:{"background-color":PAL.bg}}]},center:[114.172,22.30],zoom:12.3,
   attributionControl:{compact:true},localIdeographFontFamily:"'PingFang TC','Noto Sans TC','Microsoft JhengHei',sans-serif"});
 map.addControl(new maplibregl.NavigationControl({showCompass:false}),"top-right");
-function tint(){
-  const set=(id,k,v)=>{try{map.setPaintProperty(id,k,v)}catch(e){}};
+// recolour the OpenFreeMap "positron" style before handing it to the map
+function tintStyle(st){
   const zh=["coalesce",["get","name:zh-Hant"],["get","name:zh"],["get","name"]];
-  for(const l of map.getStyle().layers){const id=l.id;try{
-    if(l.type==="background")set(id,"background-color",PAL.bg);
-    else if(l.type==="fill"){
-      if(/water/.test(id))set(id,"fill-color",PAL.water);
-      else if(/residential|landuse/.test(id))map.setLayoutProperty(id,"visibility","none");
-      else if(/building/.test(id)){set(id,"fill-color",PAL.bld);set(id,"fill-opacity",.6)}
-      else if(/park|wood|grass|landcover|aeroway/.test(id)){set(id,"fill-color",PAL.park);set(id,"fill-opacity",.7)}
-      else set(id,"fill-color",PAL.bg);}
-    else if(l.type==="line"){
-      if(/boundary/.test(id))map.setLayoutProperty(id,"visibility","none");
-      else if(/waterway/.test(id))set(id,"line-color",PAL.water);
-      else if(/rail/.test(id))set(id,"line-color",PAL.rail);
-      else if(/casing/.test(id))set(id,"line-color",PAL.casing);
-      else if(/major|motorway/.test(id))set(id,"line-color",PAL.major);
-      else set(id,"line-color",PAL.road);}
-    else if(l.type==="symbol"){
-      set(id,"text-color",PAL.text);set(id,"text-halo-color",PAL.halo);set(id,"text-halo-width",1.4);
-      if(/poi/.test(id)&&!/station|rail/.test(id))map.setLayoutProperty(id,"visibility","none");
-      else if(/place|station|rail|water_name/.test(id)){try{map.setLayoutProperty(id,"text-field",zh)}catch(e){}}
-    }
-    }catch(e){console.warn("tint",id,e)}
-  }
+  st.layers=st.layers.filter(l=>{
+    const id=l.id;l.paint=l.paint||{};l.layout=l.layout||{};
+    if(l.type==="background"){l.paint["background-color"]=PAL.bg;return true}
+    if(l.type==="fill"){
+      if(/water/.test(id)){l.paint["fill-color"]=PAL.water;delete l.paint["fill-pattern"];return true}
+      if(/residential|landuse/.test(id))return false;
+      if(/building/.test(id)){l.paint["fill-color"]=PAL.bld;l.paint["fill-opacity"]=.6;delete l.paint["fill-outline-color"];return true}
+      if(/park|wood|grass|landcover|aeroway/.test(id)){l.paint["fill-color"]=PAL.park;l.paint["fill-opacity"]=.7;delete l.paint["fill-pattern"];return true}
+      l.paint["fill-color"]=PAL.bg;return true}
+    if(l.type==="line"){
+      if(/boundary/.test(id))return false;
+      l.paint["line-color"]=/waterway/.test(id)?PAL.water:/rail/.test(id)?PAL.rail:/casing/.test(id)?PAL.casing:/major|motorway/.test(id)?PAL.major:PAL.road;
+      return true}
+    if(l.type==="symbol"){
+      if(/poi/.test(id)&&!/station|rail/.test(id))return false;
+      l.paint["text-color"]=PAL.text;l.paint["text-halo-color"]=PAL.halo;l.paint["text-halo-width"]=1.4;
+      if(/place|station|rail|water_name/.test(id)&&l.layout["text-field"])l.layout["text-field"]=zh;
+      return true}
+    if(l.type==="raster")return false;
+    return true;
+  });
+  return st;
 }
-let tinted=false;
-function tintOnce(){if(tinted||!map.isStyleLoaded())return;tinted=true;tint()}
-map.on("style.load",()=>{tinted=false;tintOnce()});map.on("load",tintOnce);map.on("idle",tintOnce);
+fetch("https://tiles.openfreemap.org/styles/positron").then(r=>r.json()).then(st=>map.setStyle(tintStyle(st))).catch(()=>map.setStyle("https://tiles.openfreemap.org/styles/positron"));
 window.__map=map;
 map.on("zoom",()=>map.getContainer().classList.toggle("show-labels",map.getZoom()>=15.3));
 map.on("click",()=>{if(S.sel)select(null)});
