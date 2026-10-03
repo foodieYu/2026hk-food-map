@@ -689,6 +689,27 @@ function tintStyle(st){
 }
 fetch("https://tiles.openfreemap.org/styles/positron").then(r=>r.json()).then(st=>map.setStyle(tintStyle(st))).catch(()=>map.setStyle("https://tiles.openfreemap.org/styles/positron"));
 window.__map=map;
+// MTR lines and stations drawn on top of the base map
+const LINES=[
+ {n:"港島綫",c:"#7E9DB6",s:["KET","HKU","SYP","SHW","CEN","ADM","WAC","CAB","TIH","FOH","NOP","QUB"]},
+ {n:"荃灣綫",c:"#C2857D",s:["CEN","ADM","TST","JOR","YMT","MOK","PRE","SSP","CSW","LCK","MEF"]},
+ {n:"觀塘綫",c:"#88AD90",s:["WHA","HOM","YMT","MOK","PRE","SKM","KOT"]},
+ {n:"東涌綫",c:"#D4AC80",s:["HOK","KOW","OLY","NAC"]},
+ {n:"屯馬綫",c:"#9E7B6B",s:["HUH","ETS","AUS","NAC","MEF"]},
+ {n:"東鐵綫",c:"#93B6C6",s:["ADM","EXC","HUH","MKK","KOT"]}];
+const BIGSTN=new Set(["CEN","TST","MOK","CAB","SSP","NOP","KET","JOR","WAC","YMT","PRE","ADM","SHW","ETS","HOK","KOW"]);
+function addMTR(){
+  if(map.getSource("mtr"))return;
+  const inter={};LINES.forEach(l=>l.s.forEach(k=>inter[k]=(inter[k]||0)+1));
+  map.addSource("mtr",{type:"geojson",data:{type:"FeatureCollection",features:LINES.map(l=>({type:"Feature",properties:{c:l.c,n:l.n},geometry:{type:"LineString",coordinates:l.s.map(k=>[STN[k][2],STN[k][1]])}}))}});
+  map.addSource("stn",{type:"geojson",data:{type:"FeatureCollection",features:Object.entries(STN).map(([k,[n,lat,lng]])=>({type:"Feature",properties:{n:n+"站",big:BIGSTN.has(k)?1:0,x:inter[k]>1?1:0},geometry:{type:"Point",coordinates:[lng,lat]}}))}});
+  map.addLayer({id:"mtr-line",type:"line",source:"mtr",layout:{"line-cap":"round","line-join":"round"},paint:{"line-color":["get","c"],"line-width":["interpolate",["linear"],["zoom"],11,2.5,16,5],"line-opacity":.85}});
+  map.addLayer({id:"stn-dot",type:"circle",source:"stn",paint:{"circle-radius":["interpolate",["linear"],["zoom"],11,["case",["==",["get","x"],1],4,3],16,["case",["==",["get","x"],1],8,6]],"circle-color":PAL.road,"circle-stroke-color":DARK?"#B9AC9D":"#5C4D40","circle-stroke-width":1.6}});
+  map.addLayer({id:"stn-name",type:"symbol",source:"stn",minzoom:11.5,filter:["any",["==",["get","big"],1],[">=",["zoom"],13.5]],
+    layout:{"text-field":["get","n"],"text-font":["Noto Sans Regular"],"text-size":["interpolate",["linear"],["zoom"],12,11,16,14],"text-offset":[0,1.1],"text-anchor":"top","text-allow-overlap":false},
+    paint:{"text-color":DARK?"#E6DCCF":"#3A2F26","text-halo-color":PAL.bg,"text-halo-width":1.8}});
+}
+map.on("style.load",addMTR);
 map.on("zoom",()=>map.getContainer().classList.toggle("show-labels",map.getZoom()>=15.3));
 map.on("click",()=>{if(S.sel)select(null)});
 let markers=[];
@@ -714,7 +735,7 @@ function fitVisible(first){
   if(!pts.length)return;const b=new maplibregl.LngLatBounds(pts[0],pts[0]);pts.forEach(p=>b.extend(p));
   map.fitBounds(b,{padding:{top:60,bottom:90,left:30,right:60},maxZoom:15.5,duration:first?0:600});
 }
-$("legend").innerHTML=Object.values(GROUPS).map(g=>`<span><i style="background:var(${g.v})"></i>${g.label}</span>`).join("")+`<span><i style="background:var(--ink);border-radius:3px"></i>住宿</span>`;
+$("legend").innerHTML=Object.values(GROUPS).map(g=>`<span><i style="background:var(${g.v})"></i>${g.label}</span>`).join("")+`<span><i style="background:var(--ink);border-radius:3px"></i>住宿</span><span><i style="background:#fff;border:1.6px solid #5C4D40"></i>地鐵站</span>`;
 
 // ---------- interactions ----------
 const wide=()=>window.matchMedia("(min-width:900px)").matches;
