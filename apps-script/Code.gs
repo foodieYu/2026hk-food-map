@@ -3,11 +3,12 @@
  * 部署成「網頁應用程式」後，網頁可以：
  *   action=resolve  展開 Google 地圖連結，回傳店名、地址、座標
  *   action=add      新增一列店家
- *   action=update   修改某一列的狀態、哪一天等欄位
+ *   action=update   修改某一列的任何欄位（編號除外）
+ *   action=delete   刪除某一列
  */
 const SHEET_ID = '1V6pm0Qq2RDSsaduO5p4c1hOy9V2_aJjzhmDVqiwUL1Q';
 const EXTRA_COLUMNS = ['標籤'];
-const UPDATABLE = ['狀態', '哪一天', '標籤', '必吃', '備註'];
+const TEXT_COLUMNS = ['開門', '打烊', '週末開門', '週末打烊', '電話', '地鐵出口'];
 
 function doGet(e) {
   const p = (e && e.parameter) || {};
@@ -16,6 +17,7 @@ function doGet(e) {
     if (p.action === 'resolve') out = resolvePlace_(p.url || '');
     else if (p.action === 'add') out = addShop_(JSON.parse(p.data || '{}'));
     else if (p.action === 'update') out = updateShop_(JSON.parse(p.data || '{}'));
+    else if (p.action === 'delete') out = deleteShop_(JSON.parse(p.data || '{}'));
     else out = { ok: true, msg: 'ready' };
   } catch (err) {
     out = { ok: false, error: String(err && err.message || err) };
@@ -92,7 +94,7 @@ function addShop_(d) {
     const row = s.headers.map(function (h) {
       const v = d[h];
       if (v === undefined || v === null) return '';
-      if (['開門', '打烊', '週末開門', '週末打烊', '電話', '地鐵出口'].indexOf(h) >= 0 && v !== '') return "'" + v;
+      if (TEXT_COLUMNS.indexOf(h) >= 0 && v !== '') return "'" + v;
       return v;
     });
     s.sh.appendRow(row);
@@ -102,17 +104,45 @@ function addShop_(d) {
   }
 }
 
-function updateShop_(d) {
-  const s = sheet_();
+function checkRow_(s, d) {
   const idCol = s.headers.indexOf('編號');
   const row = Number(d.row);
-  if (!row || row < 2) return { ok: false, error: '列號錯誤' };
+  if (!row || row < 2 || row > s.sh.getLastRow()) throw new Error('找不到這一列，請按更新後再試');
   const cur = String(s.sh.getRange(row, idCol + 1).getValue());
-  if (d.id && !/^row\d+$/.test(d.id) && cur !== d.id) return { ok: false, error: '資料已變動，請按更新後再試' };
-  Object.keys(d.fields || {}).forEach(function (k) {
-    if (UPDATABLE.indexOf(k) < 0) return;
-    const c = s.headers.indexOf(k);
-    if (c >= 0) s.sh.getRange(row, c + 1).setValue(d.fields[k]);
-  });
-  return { ok: true };
+  if (d.id && !/^row\d+$/.test(d.id) && cur !== d.id) throw new Error('資料已變動，請按更新後再試');
+  return row;
+}
+
+function updateShop_(d) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const s = sheet_();
+    const row = checkRow_(s, d);
+    Object.keys(d.fields || {}).forEach(function (k) {
+      if (k === '編號') return;
+      const c = s.headers.indexOf(k);
+      if (c < 0) return;
+      let v = d.fields[k];
+      if (v === null || v === undefined) v = '';
+      if (TEXT_COLUMNS.indexOf(k) >= 0 && v !== '') v = "'" + v;
+      s.sh.getRange(row, c + 1).setValue(v);
+    });
+    return { ok: true };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function deleteShop_(d) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const s = sheet_();
+    const row = checkRow_(s, d);
+    s.sh.deleteRow(row);
+    return { ok: true };
+  } finally {
+    lock.releaseLock();
+  }
 }
