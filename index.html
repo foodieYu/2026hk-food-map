@@ -18,7 +18,7 @@
   --accent:#9A7556; --accent-ink:#FFFCF7;
   --water:#DDE3E0; --land:#FBF7F0; --coast:#CFC3B1;
   --open:#6D9472; --closing:#B98D4C; --closed:#A0968A; --unknown:#8189A6;
-  --g-hk:#B67A70; --g-snack:#C1935F; --g-sweet:#B18999; --g-drink:#8E7A69; --g-gift:#8A86A6;
+  --g-hk:#B67A70; --g-snack:#C1935F; --g-sweet:#B18999; --g-drink:#8E7A69; --g-gift:#8A86A6; --g-other:#7F8C7A;
   --star:#C9A45C; --pin-ink:#FFFCF7;
   --font-display:"IBM Plex Sans","Noto Sans TC","PingFang TC",system-ui,sans-serif;
   --font-body:"IBM Plex Sans","Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
@@ -30,7 +30,7 @@
   --accent:#C9A27E; --accent-ink:#1E1914;
   --water:#1A2124; --land:#2A231D; --coast:#3E352C;
   --open:#93B897; --closing:#D8B67A; --closed:#8F857A; --unknown:#A3A8C2;
-  --g-hk:#C98F86; --g-snack:#D1A877; --g-sweet:#C3A0AD; --g-drink:#A99482; --g-gift:#A6A2BE;
+  --g-hk:#C98F86; --g-snack:#D1A877; --g-sweet:#C3A0AD; --g-drink:#A99482; --g-gift:#A6A2BE; --g-other:#9CA897;
   --star:#D6B675; --pin-ink:#1E1914;
   color-scheme:dark}}
 :root[data-theme="dark"]{
@@ -38,7 +38,7 @@
   --accent:#C9A27E; --accent-ink:#1E1914;
   --water:#1A2124; --land:#2A231D; --coast:#3E352C;
   --open:#93B897; --closing:#D8B67A; --closed:#8F857A; --unknown:#A3A8C2;
-  --g-hk:#C98F86; --g-snack:#D1A877; --g-sweet:#C3A0AD; --g-drink:#A99482; --g-gift:#A6A2BE;
+  --g-hk:#C98F86; --g-snack:#D1A877; --g-sweet:#C3A0AD; --g-drink:#A99482; --g-gift:#A6A2BE; --g-other:#9CA897;
   --star:#D6B675; --pin-ink:#1E1914;
   color-scheme:dark}
 *,*::before,*::after{box-sizing:border-box}
@@ -242,7 +242,16 @@ select.chip.on{background-color:var(--accent);color:var(--accent-ink);border-col
 .hint{font-size:12.5px;color:var(--muted)}
 .locrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .locrow input{flex:1 1 180px}
-.err{color:var(--accent);font-size:13px}
+.err{color:var(--accent);font-size:13.5px;font-weight:700}
+.f.need>span:first-child{color:var(--accent)}
+.f.need .chipwrap,.f.need input{outline:2px solid var(--accent);outline-offset:3px;border-radius:10px}
+.f .needmsg{display:block;color:var(--accent);font-size:12.5px;font-weight:700;margin-top:4px}
+.chip.add{border-style:dashed;background:transparent;color:var(--muted)}
+.addbox{display:inline-flex;gap:6px;align-items:center}
+.addbox input{width:8.5em;padding:5px 9px;border:1px solid var(--accent);border-radius:999px;font:inherit;font-size:13.5px;background:var(--card);color:var(--ink)}
+.addbox button{border:0;background:var(--accent);color:var(--accent-ink);border-radius:999px;padding:5px 11px;font-size:13.5px;font-weight:700}
+.tag.ate{border-color:var(--g-other);color:var(--ink);background:color-mix(in srgb,var(--g-other) 16%,transparent)}
+.people.ate button[aria-pressed="true"]{background:var(--g-other);border-color:var(--g-other);color:#fff}
 
 .timepop{position:fixed;z-index:25;top:60px;right:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;box-shadow:0 8px 24px rgb(0 0 0/.18);display:flex;flex-direction:column;gap:10px;width:min(300px,calc(100% - 24px))}
 .timepop .two select,.timepop .two input{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:6px 8px;width:100%}
@@ -360,9 +369,9 @@ a.fab{text-decoration:none;display:inline-block}
         <div class="locrow"><input id="f_url" placeholder="https://maps.app.goo.gl/…" autocomplete="off" inputmode="url"><button type="button" class="btn primary" id="f_resolve">自動帶入</button></div>
         <div class="found" id="f_found" hidden></div>
       </div>
-      <label class="f"><span>店名 *</span><input id="f_name" maxlength="60"></label>
+      <label class="f" id="f_nameBox"><span>店名 *</span><input id="f_name" maxlength="60"></label>
       <label class="f"><span>地址</span><input id="f_addr" maxlength="120"></label>
-      <div class="f"><span>2. 類型</span><div class="chipwrap" id="f_cats"></div></div>
+      <div class="f" id="f_catsBox"><span>2. 類型 *</span><div class="chipwrap" id="f_cats"></div></div>
       <div class="f"><span>區域（帶入後會自動選）</span><div class="chipwrap" id="f_areas"></div></div>
       <div class="f"><span>標籤（可多選）</span><div class="chipwrap" id="f_tags"></div></div>
       <div class="f">
@@ -378,7 +387,7 @@ a.fab{text-decoration:none;display:inline-block}
       <label class="f"><span>必吃</span><input id="f_must" maxlength="80" placeholder="例：菠蘿油、奶茶"></label>
       <label class="f"><span>備註</span><input id="f_note" maxlength="200" placeholder="例：要排隊、只收現金"></label>
       <div class="f"><span>誰想吃（可多選）</span><div class="people" id="f_people"></div></div>
-      <div class="f"><span>吃過了嗎</span><div class="chipwrap" id="f_status"></div></div>
+      <div class="f"><span>誰吃過了（可多選）</span><div class="people ate" id="f_ate"></div></div>
       <div class="f"><span>排進哪一天</span><div class="chipwrap" id="f_day"></div></div>
       <label class="f"><span>誰加的</span><select id="f_by"><option value="">（不填）</option><option>瑜</option><option>翎</option><option>芷</option><option>佩</option></select></label>
       <div class="err" id="f_err" hidden></div>
@@ -425,9 +434,15 @@ const STN_AREA={TST:"尖沙咀・佐敦",ETS:"尖沙咀・佐敦",JOR:"尖沙咀
  FOH:"北角・炮台山",NOP:"北角・炮台山",QUB:"北角・炮台山",KET:"西環・堅尼地城",HKU:"西環・堅尼地城",SYP:"西環・堅尼地城"};
 
 const SRC_LINKS={"IG 貼文 1":"https://www.instagram.com/p/DDLuoEOSj1v/","IG 貼文 2":"https://www.instagram.com/p/C0wNrYZP6Au/","翎想吃":"https://www.instagram.com/p/Da0O4Fxv-Ow/","IG 貼文 4":"https://www.instagram.com/p/DWeOshFj9up/","IG 貼文 5":"https://www.instagram.com/p/DWgts40kveq/"};
-const GROUPS={hk:{label:"港式餐館",v:"--g-hk"},snack:{label:"街頭小吃",v:"--g-snack"},sweet:{label:"甜品・麵包",v:"--g-sweet"},drink:{label:"咖啡・飲品",v:"--g-drink"},gift:{label:"手信",v:"--g-gift"}};
+const GROUPS={hk:{label:"港式餐館",v:"--g-hk"},snack:{label:"街頭小吃",v:"--g-snack"},sweet:{label:"甜品・麵包",v:"--g-sweet"},drink:{label:"咖啡・飲品",v:"--g-drink"},gift:{label:"手信",v:"--g-gift"},other:{label:"其他",v:"--g-other"}};
 const CATS=[["茶餐廳","hk","茶"],["點心","hk","點"],["燒味","hk","燒"],["粉麵","hk","麵"],["正餐","hk","餐"],["火鍋","hk","鍋"],["速食","hk","炸"],["小吃","snack","食"],["甜品","sweet","甜"],["麵包・蛋撻","sweet","包"],["咖啡","drink","啡"],["飲品","drink","飲"],["手信","gift","禮"]];
 const CAT={};CATS.forEach(([k,g,ch])=>CAT[k]={g,ch});
+const catInfo=c=>CAT[c]||{g:"other",ch:(c||"？").charAt(0)};
+const ateDone=s=>(s.ate||[]).length>0&&((s.wants||[]).length?s.wants.every(p=>s.ate.includes(p)):true);
+const wantsIt=s=>(s.wants||[]).length>0||s.status==="want";
+const CUSTOM={cats:new Set(),tags:new Set()};
+const allCats=()=>[...new Set(CATS.map(c=>c[0]).concat(S.shops.map(s=>s.cat),[...CUSTOM.cats]))].filter(Boolean);
+const allTags=()=>[...new Set(TAGS.concat(...S.shops.map(s=>s.tags||[]),[...CUSTOM.tags]))].filter(Boolean);
 const AREAS=["尖沙咀・佐敦","油麻地・旺角・太子","深水埗・長沙灣","中環・上環","灣仔・銅鑼灣","北角・炮台山","西環・堅尼地城","其他"];
 const DAYS=[["","未排"],["D1","Day 1"],["D2","Day 2 · 迪士尼"],["D3","Day 3"]];
 const DOW=["日","一","二","三","四","五","六"];
@@ -498,8 +513,9 @@ function rowsToData(rows){
     let sched=null;if(o&&c){sched=DOW.map((_,d)=>cl.has(d)?"":((d===0||d===6)&&wo&&wc?wo+"-"+wc:o+"-"+c))}
     const st=g(r,"狀態");
     const wants=PEOPLE.filter(p=>g(r,"想吃的人").includes(p));
-    shops.push(Object.assign(base,{raw:{open:o,close:c,closed:[...cl]},cat:CAT[cat]?cat:"小吃",area:AREAS.includes(g(r,"區域"))?g(r,"區域"):"其他",sched,
-      wants,status:/吃過/.test(st)?"done":(wants.length||/想吃/.test(st))?"want":"",day:dayKey(g(r,"哪一天")),mine:/自己/.test(g(r,"來源"))}));
+    const ate=PEOPLE.filter(p=>g(r,"吃過的人").includes(p));
+    shops.push(Object.assign(base,{raw:{open:o,close:c,closed:[...cl]},cat:cat||"小吃",area:AREAS.includes(g(r,"區域"))?g(r,"區域"):"其他",sched,
+      wants,ate,status:(ate.length||(/吃過/.test(st)&&!g(r,"吃過的人")))?"done":(wants.length||/想吃/.test(st))?"want":"",day:dayKey(g(r,"哪一天")),mine:/自己/.test(g(r,"來源"))}));
   });
   return {shops,hotel};
 }
@@ -575,7 +591,7 @@ function matches(s,now){
   if(f.who&&!(s.wants||[]).includes(f.who))return false;
   if(f.area&&s.area!==f.area)return false;
   if(f.day&&(s.day||"")!==(f.day==="none"?"":f.day))return false;
-  if(f.want&&s.status!=="want")return false;
+  if(f.want&&!wantsIt(s))return false;
   if(f.done&&s.status!=="done")return false;
   if(f.mine&&!s.mine)return false;
   if(f.open){const k=status(s,now).k;if(k!=="open"&&k!=="closing")return false}
@@ -595,23 +611,23 @@ function renderHeader(){
   $("timeBtn").textContent=S.time.mode==="custom"?"自訂時間 · 改回現在":"香港時間 · 改時間";
   if(!S.loaded){$("stats").textContent="載入中…";return}
   const open=S.shops.filter(s=>{const k=status(s,now).k;return k==="open"||k==="closing"}).length;
-  $("stats").textContent=S.shops.length+" 家 · "+open+" 家營業中 · 想吃 "+S.shops.filter(s=>s.status==="want").length+" · 吃過 "+S.shops.filter(s=>s.status==="done").length;
+  $("stats").textContent=S.shops.length+" 家 · "+open+" 家營業中 · 想吃 "+S.shops.filter(wantsIt).length+" · 吃過 "+S.shops.filter(s=>s.status==="done").length;
 }
 function renderChips(){
   const f=S.f;
   const b=(k,l)=>`<button type="button" class="chip" data-chip="${k}" aria-pressed="${!!f[k]}">${l}</button>`;
   const sel=(k,l,opts)=>`<select class="chip${f[k]?" on":""}" data-sel="${k}" aria-label="${l}"><option value="">${l}</option>${opts.map(([v,t])=>`<option value="${esc(v)}"${String(f[k])===String(v)?" selected":""}>${esc(t)}</option>`).join("")}</select>`;
   $("chips").innerHTML=b("open","營業中")+b("want","想吃")+b("done","吃過")+b("mine","自己想吃 ★")
-   +sel("cat","全部類型",CATS.map(c=>[c[0],c[0]]))+sel("area","全部區域",AREAS.map(a=>[a,a]))
+   +sel("cat","全部類型",allCats().map(c=>[c,c]))+sel("area","全部區域",AREAS.map(a=>[a,a]))
    +sel("day","全部日子",[["D1","Day 1"],["D2","Day 2 迪士尼"],["D3","Day 3"],["none","未排"]])
    +sel("who","誰想吃",PEOPLE.map(p=>[p,p+" 想吃的"]))
-   +sel("tag","全部標籤",[...new Set(TAGS.concat(...S.shops.map(s=>s.tags||[])))].map(t=>[t,t]));
+   +sel("tag","全部標籤",allTags().map(t=>[t,t]));
 }
 function renderNear(){
   const opts=[["","（依營業狀態）"]].concat(S.hotel?[["hotel","飯店（"+S.hotel.short+"）"]]:[]).concat(STN_LIST.slice().sort((a,b)=>a.n.localeCompare(b.n,"zh-Hant")).map(s=>[s.k,s.n+"站"]));
   $("near").innerHTML=opts.map(([v,t])=>`<option value="${v}"${S.near===v?" selected":""}>${esc(t)}</option>`).join("");
 }
-function glyph(s){const g=CAT[s.cat].g;return `<span class="glyph" style="background:var(${GROUPS[g].v})" aria-hidden="true">${CAT[s.cat].ch}${s.mine?'<i class="star"></i>':""}</span>`}
+function glyph(s){const ci=catInfo(s.cat),g=ci.g;return `<span class="glyph" style="background:var(${GROUPS[g].v})" aria-hidden="true">${esc(ci.ch)}${s.mine?'<i class="star"></i>':""}</span>`}
 function stnText(s){if(!s.near)return "位置未定";return `<span class="stn">${esc(s.near.st.n)}站${s.exit?" "+esc(s.exit)+" 出口":""}</span> · 步行約 ${s.near.walk} 分`}
 const dayLabel=d=>d==="D1"?"Day 1":d==="D2"?"Day 2":d==="D3"?"Day 3":"";
 function renderList(){
@@ -621,8 +637,8 @@ function renderList(){
   if(!S.shops.length){$("list").innerHTML=`<li class="empty"><b>還沒有店家</b>按「＋ 新增店家」到試算表加第一家。</li>`;return}
   if(!arr.length){$("list").innerHTML=`<li class="empty"><b>沒有符合條件的店</b>試試取消一些篩選。</li>`;return}
   $("list").innerHTML=arr.map(s=>{const st=status(s,now);const h=fromHotel(s);
-    return `<li><button type="button" class="item${S.sel===s.id?" sel":""}${s.status==="done"?" done":""}" data-open="${esc(s.id)}">${glyph(s)}<span style="min-width:0">
-      <h3>${esc(s.name)} <span class="pill ${st.k}">${esc(st.t)}</span>${s.status==="done"?'<span class="tag">吃過 ✓</span>':(s.wants||[]).length?`<span class="tag want">${s.wants.length} 人想吃 · ${s.wants.join("")}</span>`:s.status==="want"?'<span class="tag want">想吃</span>':""}${s.day?`<span class="tag day">${dayLabel(s.day)}</span>`:""}</h3>
+    return `<li><button type="button" class="item${S.sel===s.id?" sel":""}${ateDone(s)?" done":""}" data-open="${esc(s.id)}">${glyph(s)}<span style="min-width:0">
+      <h3>${esc(s.name)} <span class="pill ${st.k}">${esc(st.t)}</span>${(s.wants||[]).length?`<span class="tag want">${s.wants.length} 人想吃 · ${s.wants.join("")}</span>`:s.status==="want"?'<span class="tag want">想吃</span>':""}${(s.ate||[]).length?`<span class="tag ate">✓ ${s.ate.join("")} 吃過</span>`:s.status==="done"?'<span class="tag ate">吃過 ✓</span>':""}${s.day?`<span class="tag day">${dayLabel(s.day)}</span>`:""}</h3>
       <div class="meta"><span>${stnText(s)}</span>${h!=null?`<span>離飯店 ${fmtDist(h)}</span>`:""}<span>${esc(s.cat)} · ${esc(s.area)}</span></div>
       ${s.must?`<div class="must">${esc(s.must)}</div>`:""}${(s.tags||[]).length?`<div class="tagline">${s.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</div>`:""}</span></button></li>`}).join("");
 }
@@ -668,9 +684,10 @@ function renderSheet(){
     ${srcs?`<div class="row"><span>來源</span><span class="v srcs">${srcs}</span></div>`:""}
     ${(s.tags||[]).length?`<div class="row"><span>標籤</span><span class="v tagline">${s.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</span></div>`:""}
     ${SCRIPT_URL?`<div class="ctl"><label>誰想吃？${(s.wants||[]).length?`<span class="wantline">　${s.wants.length} 人想吃</span>`:""}</label><div class="people">${PEOPLE.map(p=>`<button type="button" data-qwant="${p}" aria-pressed="${(s.wants||[]).includes(p)}">${p}</button>`).join("")}</div>
-      <div class="statusbtns" style="margin-top:6px"><button type="button" class="btn" data-qstatus="吃過" aria-pressed="${s.status==="done"}">✓ 吃過了</button></div></div>
+</div>
+    <div class="ctl"><label>誰吃過了？${(s.ate||[]).length?`<span class="wantline">　${s.ate.length} 人吃過</span>`:""}</label><div class="people ate">${PEOPLE.map(p=>`<button type="button" data-qate="${p}" aria-pressed="${(s.ate||[]).includes(p)}">${p} ✓</button>`).join("")}</div></div>
     <div class="ctl"><label>排進哪一天</label><div class="seg wide">${DAYS.map(([k,l])=>`<button type="button" data-qday="${k}" aria-pressed="${(s.day||"")===k}">${k==="D2"?"D2 迪士尼":k?l:"未排"}</button>`).join("")}</div></div>`
-    :`<div class="row"><span>狀態</span><span class="v">${s.status==="want"?"想吃":s.status==="done"?"吃過了 ✓":"—"}　·　${dayLabel(s.day)||"還沒排日子"}</span></div>`}
+    :`<div class="row"><span>狀態</span><span class="v">${[(s.wants||[]).length?s.wants.join("")+" 想吃":"",(s.ate||[]).length?s.ate.join("")+" 吃過":s.status==="done"?"吃過了 ✓":""].filter(Boolean).join("，")||"—"}　·　${dayLabel(s.day)||"還沒排日子"}</span></div>`}
     ${s.by?`<div class="row"><span>新增者</span><span class="v">${esc(s.by)}</span></div>`:""}
     ${SCRIPT_URL?`<div class="actions"><button type="button" class="btn" id="shEdit">編輯</button><button type="button" class="btn danger" id="shDel">刪除</button></div>
     ${S.confirmDel?`<div class="confirm">確定刪除「${esc(s.name)}」？刪除後試算表的這一列也會一起刪掉。<button type="button" class="btn danger" id="delYes">刪除</button><button type="button" class="btn" id="delNo">取消</button></div>`:""}`
@@ -747,8 +764,8 @@ function renderPins(){
   markers.forEach(m=>m.remove());markers=[];const now=hkNow();
   const arr=visible();
   arr.filter(s=>s.lat!=null).forEach(s=>{
-    const g=CAT[s.cat].g,k=status(s,now).k,sel=s.id===S.sel;
-    addMarker(s.lat,s.lng,`<div class="lpin${sel?" sel":""}${s.status==="done"?" done":""}${k==="closed"?" closedNow":""}" title="${esc(s.name)}"><span class="dot" style="background:var(${GROUPS[g].v})">${CAT[s.cat].ch}</span>${(s.wants||[]).length?`<i class="cnt">${s.wants.length}</i>`:(s.mine||s.status==="want")?'<i class="badge"></i>':""}<span class="lbl">${esc(shortLabel(s.name))}</span></div>`,()=>select(s.id,false),sel?3:1);
+    const ci=catInfo(s.cat),g=ci.g,k=status(s,now).k,sel=s.id===S.sel;
+    addMarker(s.lat,s.lng,`<div class="lpin${sel?" sel":""}${ateDone(s)?" done":""}${k==="closed"?" closedNow":""}" title="${esc(s.name)}"><span class="dot" style="background:var(${GROUPS[g].v})">${esc(ci.ch)}</span>${(s.wants||[]).length?`<i class="cnt">${s.wants.length}</i>`:(s.mine||s.status==="want")?'<i class="badge"></i>':""}<span class="lbl">${esc(shortLabel(s.name))}</span></div>`,()=>select(s.id,false),sel?3:1);
   });
   if(S.hotel){const h=S.hotel;addMarker(h.lat,h.lng,`<div class="lpin hotel${S.sel==="__hotel"?" sel":""}" title="${esc(h.name)}"><span class="dot">宿</span><span class="lbl">${esc(h.short)}</span></div>`,()=>select("__hotel",false),2)}
   const missing=arr.filter(s=>s.lat==null).length,note=$("mapNote");
@@ -810,26 +827,34 @@ async function api(action,params){
 }
 const DAY_TEXT={D1:"Day 1",D2:"Day 2 迪士尼",D3:"Day 3","":""};
 document.addEventListener("click",async e=>{
-  const qs=e.target.closest("[data-qstatus]"),qd=e.target.closest("[data-qday]"),qw=e.target.closest("[data-qwant]");
+  const qs=e.target.closest("[data-qate]"),qd=e.target.closest("[data-qday]"),qw=e.target.closest("[data-qwant]");
   if(!qs&&!qd&&!qw)return;
   const s=S.byId[S.sel];if(!s)return;
   let fields={};
   if(qw){const p=qw.dataset.qwant;const set=new Set(s.wants||[]);set.has(p)?set.delete(p):set.add(p);s.wants=PEOPLE.filter(x=>set.has(x));
-    fields["想吃的人"]=s.wants.join("、");if(s.status!=="done"){s.status=s.wants.length?"want":"";fields["狀態"]=s.wants.length?"想吃":""}}
-  if(qs){const done=s.status!=="done";s.status=done?"done":(s.wants.length?"want":"");fields["狀態"]=done?"吃過":(s.wants.length?"想吃":"")}
+    fields["想吃的人"]=s.wants.join("、")}
+  if(qs){const p=qs.dataset.qate;const set=new Set(s.ate||[]);set.has(p)?set.delete(p):set.add(p);s.ate=PEOPLE.filter(x=>set.has(x));fields["吃過的人"]=s.ate.join("、")}
+  if(qw||qs){s.status=(s.ate||[]).length?"done":(s.wants||[]).length?"want":"";fields["狀態"]=s.status==="done"?"吃過":s.status==="want"?"想吃":""}
   if(qd){fields["哪一天"]=DAY_TEXT[qd.dataset.qday];s.day=qd.dataset.qday}
   renderAll();
   try{await api("update",{data:JSON.stringify({row:s.row,id:s.id,fields})});toast("已存到試算表")}catch(err){toast("儲存失敗："+err.message);load(false)}
 });
-const FF={wants:new Set(),editing:null,cat:"",area:"",tags:new Set(),closed:new Set(),status:"想吃",day:"",lat:null,lng:null,link:""};
+const FF={ate:new Set(),wants:new Set(),editing:null,cat:"",area:"",tags:new Set(),closed:new Set(),status:"想吃",day:"",lat:null,lng:null,link:""};
 const PRESETS=[["早餐・茶餐廳","07:00","18:00"],["午晚餐","11:00","22:00"],["下午茶・甜點","12:00","21:00"],["宵夜","18:00","02:00"],["不確定","",""]];
-function chips(id,items,isOn,onTap){const el=$(id);el.innerHTML=items.map(([v,l])=>`<button type="button" class="chip" data-v="${esc(v)}" aria-pressed="${isOn(v)}">${esc(l)}</button>`).join("");el.onclick=ev=>{const b=ev.target.closest("[data-v]");if(b){onTap(b.dataset.v);}}}
+function chips(id,items,isOn,onTap,onAdd,ph){const el=$(id);el.innerHTML=items.map(([v,l])=>`<button type="button" class="chip" data-v="${esc(v)}" aria-pressed="${isOn(v)}">${esc(l)}</button>`).join("")+(onAdd?`<button type="button" class="chip add" data-add>＋ 新增</button>`:"");
+  el.onclick=ev=>{const b=ev.target.closest("[data-v]");if(b){onTap(b.dataset.v);return}
+    const a=ev.target.closest("[data-add]");if(a){const box=document.createElement("span");box.className="addbox";box.innerHTML=`<input maxlength="12" placeholder="${esc(ph||"輸入名稱")}" enterkeyhint="done"><button type="button">加入</button>`;a.replaceWith(box);const inp=box.querySelector("input");inp.focus();
+      const go=()=>{const v=inp.value.trim().replace(/[、,，]/g,"");if(v)onAdd(v);else renderForm()};box.querySelector("button").onclick=go;inp.onkeydown=k=>{if(k.key==="Enter"){k.preventDefault();go()}else if(k.key==="Escape")renderForm()}}}}
 function renderForm(){
-  chips("f_cats",CATS.map(c=>[c[0],c[0]]),v=>FF.cat===v,v=>{FF.cat=FF.cat===v?"":v;renderForm()});
+  const cats=allCats();if(FF.cat&&!cats.includes(FF.cat))cats.push(FF.cat);
+  chips("f_cats",cats.map(c=>[c,c]),v=>FF.cat===v,v=>{FF.cat=FF.cat===v?"":v;renderForm()},v=>{CUSTOM.cats.add(v);FF.cat=v;renderForm()},"新類型，例：燒鵝");
+  if(FF.cat)clearNeed("f_catsBox");
   chips("f_areas",AREAS.map(a=>[a,a]),v=>FF.area===v,v=>{FF.area=v;renderForm()});
-  chips("f_tags",TAGS.map(t=>[t,t]),v=>FF.tags.has(v),v=>{FF.tags.has(v)?FF.tags.delete(v):FF.tags.add(v);renderForm()});
+  const tags=allTags();FF.tags.forEach(t=>{if(!tags.includes(t))tags.push(t)});
+  chips("f_tags",tags.map(t=>[t,t]),v=>FF.tags.has(v),v=>{FF.tags.has(v)?FF.tags.delete(v):FF.tags.add(v);renderForm()},v=>{CUSTOM.tags.add(v);FF.tags.add(v);renderForm()},"新標籤，例：必排");
   chips("f_presets",PRESETS.map(p=>[p[0],p[0]]),()=>false,v=>{const p=PRESETS.find(x=>x[0]===v);$("f_open").value=p[1];$("f_close").value=p[2]});
-  chips("f_status",[["吃過","吃過了"]],v=>FF.status==="吃過",()=>{FF.status=FF.status==="吃過"?"":"吃過";renderForm()});
+  $("f_ate").innerHTML=PEOPLE.map(p=>`<button type="button" data-p="${p}" aria-pressed="${FF.ate.has(p)}">${p} ✓</button>`).join("");
+  $("f_ate").onclick=ev=>{const b=ev.target.closest("[data-p]");if(!b)return;FF.ate.has(b.dataset.p)?FF.ate.delete(b.dataset.p):FF.ate.add(b.dataset.p);renderForm()};
   $("f_people").innerHTML=PEOPLE.map(p=>`<button type="button" data-p="${p}" aria-pressed="${FF.wants.has(p)}">${p}</button>`).join("");
   $("f_people").onclick=ev=>{const b=ev.target.closest("[data-p]");if(!b)return;FF.wants.has(b.dataset.p)?FF.wants.delete(b.dataset.p):FF.wants.add(b.dataset.p);renderForm()};
   chips("f_day",[["","未排"],["D1","Day 1"],["D2","Day 2 迪士尼"],["D3","Day 3"]],v=>FF.day===v,v=>{FF.day=v;renderForm()});
@@ -839,14 +864,14 @@ $("f_dows").addEventListener("click",e=>{const b=e.target.closest("[data-dow]");
 function openForm(shop){
   const e=shop||null;
   Object.assign(FF,{editing:e,cat:e?e.cat:"",area:e?e.area:"",tags:new Set(e?e.tags:[]),closed:new Set(e&&e.raw?e.raw.closed:[]),
-    status:e&&e.status==="done"?"吃過":"",wants:new Set(e?e.wants||[]:(lsGet("hk3day-by")&&PEOPLE.includes(lsGet("hk3day-by"))?[lsGet("hk3day-by")]:[])),day:e?e.day||"":"",lat:e?e.lat:null,lng:e?e.lng:null,link:e?e.link:""});
+    ate:new Set(e?e.ate||[]:[]),wants:new Set(e?e.wants||[]:(lsGet("hk3day-by")&&PEOPLE.includes(lsGet("hk3day-by"))?[lsGet("hk3day-by")]:[])),day:e?e.day||"":"",lat:e?e.lat:null,lng:e?e.lng:null,link:e?e.link:""});
   $("f_url").value="";$("f_name").value=e?e.name:"";$("f_addr").value=e?e.addr:"";
   $("f_open").value=e&&e.raw?e.raw.open:"";$("f_close").value=e&&e.raw?e.raw.close:"";
   $("f_must").value=e?e.must:"";$("f_note").value=e?e.note:"";
   $("f_by").value=e?(e.by||""):(lsGet("hk3day-by")||"");
   FF.hoursSnap=$("f_open").value+"|"+$("f_close").value+"|"+[...FF.closed].sort().join("");
   $("formTitle").textContent=e?"編輯店家":"新增店家";$("f_save").textContent=e?"儲存修改":"新增到清單";
-  $("f_found").hidden=true;$("f_err").hidden=true;
+  $("f_found").hidden=true;$("f_err").hidden=true;clearNeed("f_catsBox");clearNeed("f_nameBox");
   renderForm();$("modal").hidden=false;if(!e)setTimeout(()=>$("f_url").focus(),50);
 }
 async function deleteShop(s){
@@ -855,6 +880,9 @@ async function deleteShop(s){
   catch(err){toast("刪除失敗："+err.message);S.confirmDel=false;renderSheet()}
 }
 function closeForm(){$("modal").hidden=true}
+function clearNeed(id){const f=$(id);if(!f)return;f.classList.remove("need");const m=f.querySelector(".needmsg");if(m)m.remove()}
+function markNeed(id,msg){const f=$(id);clearNeed(id);f.classList.add("need");const m=document.createElement("span");m.className="needmsg";m.textContent="↑ "+msg;f.appendChild(m);f.scrollIntoView({behavior:"smooth",block:"center"})}
+$("f_name").addEventListener("input",()=>{if($("f_name").value.trim())clearNeed("f_nameBox")});
 $("fab").onclick=()=>{if(!SCRIPT_URL){window.open(EDIT_URL,"_blank","noopener");return}openForm(null)};
 $("f_cancel").onclick=closeForm;
 $("modal").addEventListener("click",e=>{if(e.target.id==="modal")closeForm()});
@@ -878,14 +906,16 @@ $("f_resolve").onclick=async()=>{
 };
 $("f_save").onclick=async()=>{
   const err=m=>{$("f_err").textContent=m;$("f_err").hidden=false};
-  const name=$("f_name").value.trim();if(!name)return err("請填店名，或先按「自動帶入」。");
-  if(!FF.cat)return err("請選一個類型。");
+  const miss=(id,m)=>{markNeed(id,m);err(m);toast(m)};
+  const name=$("f_name").value.trim();if(!name)return miss("f_nameBox","還沒填店名：請填店名，或先貼連結按「自動帶入」");
+  if(!FF.cat)return miss("f_catsBox","還沒選類型：請點一個類型，沒有合適的可以按「＋ 新增」");
+  $("f_err").hidden=true;
   const o=$("f_open").value,c=$("f_close").value,closed=[...FF.closed].sort().map(i=>DOW[i]).join("");
   const by=$("f_by").value.trim();lsSet("hk3day-by",by);
   const d={"店名":name,"類型":FF.cat,"區域":FF.area||"其他","地址":$("f_addr").value.trim(),"緯度":FF.lat==null?"":FF.lat,"經度":FF.lng==null?"":FF.lng,
     "Google 地圖連結":FF.link,"開門":o,"打烊":c,"公休日":closed,
     "營業時間說明":o&&c?((closed?"":"每日 ")+o+"–"+c+(closed?"，週"+[...closed].join("、")+"休":"")):"營業時間待確認",
-    "必吃":$("f_must").value.trim(),"備註":$("f_note").value.trim(),"來源":"網頁新增","狀態":FF.status==="吃過"?"吃過":(FF.wants.size?"想吃":""),"想吃的人":PEOPLE.filter(p=>FF.wants.has(p)).join("、"),"哪一天":DAY_TEXT[FF.day],"新增者":by,"標籤":[...FF.tags].join("、")};
+    "必吃":$("f_must").value.trim(),"備註":$("f_note").value.trim(),"來源":"網頁新增","狀態":FF.ate.size?"吃過":(FF.wants.size?"想吃":""),"想吃的人":PEOPLE.filter(p=>FF.wants.has(p)).join("、"),"吃過的人":PEOPLE.filter(p=>FF.ate.has(p)).join("、"),"哪一天":DAY_TEXT[FF.day],"新增者":by,"標籤":[...FF.tags].join("、")};
   const b=$("f_save");b.disabled=true;
   try{
     if(FF.editing){
