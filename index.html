@@ -509,7 +509,9 @@ function rowsToData(rows){
       hoursText:g(r,"營業時間說明"),must:g(r,"必吃"),note:g(r,"備註"),exit:g(r,"地鐵出口"),phone:g(r,"電話"),src:g(r,"來源"),by:g(r,"新增者")};
     const cat=g(r,"類型");
     if(cat==="住宿"){if(!hotel&&ok){hotel=Object.assign(base,{short:name.replace(/^香港/,"").replace(/^銅鑼灣/,"")});}return;}
-    const o=tm(g(r,"開門")),c=tm(g(r,"打烊")),wo=tm(g(r,"週末開門")),wc=tm(g(r,"週末打烊"));const cl=closedSet(g(r,"公休日"));
+    let o=tm(g(r,"開門")),c=tm(g(r,"打烊")),wo=tm(g(r,"週末開門")),wc=tm(g(r,"週末打烊"));
+    // 開門／打烊格子讀不到時，改從「營業時間說明」抓第一組時間（例：每日 11:00–05:00）
+    if(!(o&&c)){const hm=g(r,"營業時間說明").match(/(\d{1,2}[:：]\d{2})\s*[–\-~～至到]\s*(?:翌日)?(\d{1,2}[:：]\d{2})/);if(hm){o=tm(hm[1]);c=tm(hm[2])}}const cl=closedSet(g(r,"公休日"));
     let sched=null;if(o&&c){sched=DOW.map((_,d)=>cl.has(d)?"":((d===0||d===6)&&wo&&wc?wo+"-"+wc:o+"-"+c))}
     const st=g(r,"狀態");
     const wants=PEOPLE.filter(p=>g(r,"想吃的人").includes(p));

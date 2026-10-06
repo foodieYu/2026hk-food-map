@@ -8,7 +8,9 @@
  */
 const SHEET_ID = '1V6pm0Qq2RDSsaduO5p4c1hOy9V2_aJjzhmDVqiwUL1Q';
 const EXTRA_COLUMNS = ['標籤', '想吃的人', '吃過的人'];
-const TEXT_COLUMNS = ['開門', '打烊', '週末開門', '週末打烊', '電話', '地鐵出口'];
+// 這些欄位要存成文字（避免電話變成數字）；時間欄位不加，讓試算表存成真正的時間，網頁才讀得到
+const TEXT_COLUMNS = ['電話', '地鐵出口'];
+const TIME_COLUMNS = ['開門', '打烊', '週末開門', '週末打烊'];
 
 function doGet(e) {
   const p = (e && e.parameter) || {};
