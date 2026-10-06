@@ -593,7 +593,6 @@ function matches(s,now){
   if(f.day&&(s.day||"")!==(f.day==="none"?"":f.day))return false;
   if(f.want&&!wantsIt(s))return false;
   if(f.done&&s.status!=="done")return false;
-  if(f.mine&&!s.mine)return false;
   if(f.open){const k=status(s,now).k;if(k!=="open"&&k!=="closing")return false}
   return true;
 }
@@ -617,7 +616,7 @@ function renderChips(){
   const f=S.f;
   const b=(k,l)=>`<button type="button" class="chip" data-chip="${k}" aria-pressed="${!!f[k]}">${l}</button>`;
   const sel=(k,l,opts)=>`<select class="chip${f[k]?" on":""}" data-sel="${k}" aria-label="${l}"><option value="">${l}</option>${opts.map(([v,t])=>`<option value="${esc(v)}"${String(f[k])===String(v)?" selected":""}>${esc(t)}</option>`).join("")}</select>`;
-  $("chips").innerHTML=b("open","營業中")+b("want","想吃")+b("done","吃過")+b("mine","自己想吃 ★")
+  $("chips").innerHTML=b("open","營業中")+b("want","想吃")+b("done","吃過")
    +sel("cat","全部類型",allCats().map(c=>[c,c]))+sel("area","全部區域",AREAS.map(a=>[a,a]))
    +sel("day","全部日子",[["D1","Day 1"],["D2","Day 2 迪士尼"],["D3","Day 3"],["none","未排"]])
    +sel("who","誰想吃",PEOPLE.map(p=>[p,p+" 想吃的"]))
@@ -627,7 +626,7 @@ function renderNear(){
   const opts=[["","（依營業狀態）"]].concat(S.hotel?[["hotel","飯店（"+S.hotel.short+"）"]]:[]).concat(STN_LIST.slice().sort((a,b)=>a.n.localeCompare(b.n,"zh-Hant")).map(s=>[s.k,s.n+"站"]));
   $("near").innerHTML=opts.map(([v,t])=>`<option value="${v}"${S.near===v?" selected":""}>${esc(t)}</option>`).join("");
 }
-function glyph(s){const ci=catInfo(s.cat),g=ci.g;return `<span class="glyph" style="background:var(${GROUPS[g].v})" aria-hidden="true">${esc(ci.ch)}${s.mine?'<i class="star"></i>':""}</span>`}
+function glyph(s){const ci=catInfo(s.cat),g=ci.g;return `<span class="glyph" style="background:var(${GROUPS[g].v})" aria-hidden="true">${esc(ci.ch)}</span>`}
 function stnText(s){if(!s.near)return "位置未定";return `<span class="stn">${esc(s.near.st.n)}站${s.exit?" "+esc(s.exit)+" 出口":""}</span> · 步行約 ${s.near.walk} 分`}
 const dayLabel=d=>d==="D1"?"Day 1":d==="D2"?"Day 2":d==="D3"?"Day 3":"";
 function renderList(){
@@ -765,7 +764,7 @@ function renderPins(){
   const arr=visible();
   arr.filter(s=>s.lat!=null).forEach(s=>{
     const ci=catInfo(s.cat),g=ci.g,k=status(s,now).k,sel=s.id===S.sel;
-    addMarker(s.lat,s.lng,`<div class="lpin${sel?" sel":""}${ateDone(s)?" done":""}${k==="closed"?" closedNow":""}" title="${esc(s.name)}"><span class="dot" style="background:var(${GROUPS[g].v})">${esc(ci.ch)}</span>${(s.wants||[]).length?`<i class="cnt">${s.wants.length}</i>`:(s.mine||s.status==="want")?'<i class="badge"></i>':""}<span class="lbl">${esc(shortLabel(s.name))}</span></div>`,()=>select(s.id,false),sel?3:1);
+    addMarker(s.lat,s.lng,`<div class="lpin${sel?" sel":""}${ateDone(s)?" done":""}${k==="closed"?" closedNow":""}" title="${esc(s.name)}"><span class="dot" style="background:var(${GROUPS[g].v})">${esc(ci.ch)}</span>${(s.wants||[]).length?`<i class="cnt">${s.wants.length}</i>`:(s.status==="want")?'<i class="badge"></i>':""}<span class="lbl">${esc(shortLabel(s.name))}</span></div>`,()=>select(s.id,false),sel?3:1);
   });
   if(S.hotel){const h=S.hotel;addMarker(h.lat,h.lng,`<div class="lpin hotel${S.sel==="__hotel"?" sel":""}" title="${esc(h.name)}"><span class="dot">宿</span><span class="lbl">${esc(h.short)}</span></div>`,()=>select("__hotel",false),2)}
   const missing=arr.filter(s=>s.lat==null).length,note=$("mapNote");
