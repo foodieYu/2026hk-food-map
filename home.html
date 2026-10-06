@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#F5EFE6">
+<meta name="robots" content="noindex">
+<title>我的旅遊地圖</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* Layout: single column (max 760px). Lock screen → trip list grouped by 即將出發 / 過去的旅程 → 建立新旅程 sheet.
+   Look: same milk-tea tokens as the trip map page. */
+:root{
+  --bg:#F5EFE6; --card:#FFFCF7; --ink:#3A2F26; --muted:#86786A; --line:#E2D6C4; --soft:#EFE6D8;
+  --accent:#9A7556; --accent-ink:#FFFCF7; --ok:#6D9472; --warn:#B98D4C; --err:#A6574B;
+  --font:"IBM Plex Sans","Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --shadow:0 1px 2px rgba(58,47,38,.06),0 8px 24px -14px rgba(58,47,38,.22);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#1E1914; --card:#28211B; --ink:#EEE5D9; --muted:#A99B8B; --line:#3B3229; --soft:#312921;
+  --accent:#C9A27E; --accent-ink:#1E1914; --ok:#93B897; --warn:#D8B67A; --err:#D99A8F; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#1E1914; --card:#28211B; --ink:#EEE5D9; --muted:#A99B8B; --line:#3B3229; --soft:#312921;
+  --accent:#C9A27E; --accent-ink:#1E1914; --ok:#93B897; --warn:#D8B67A; --err:#D99A8F; color-scheme:dark}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.55;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:760px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top,0px)) 16px calc(110px + env(safe-area-inset-bottom,0px))}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding-bottom:16px;border-bottom:1px solid var(--line);margin-bottom:20px}
+h1{margin:0;font-size:24px;font-weight:700;letter-spacing:.02em}
+h1 b{color:var(--accent)}
+.sub{color:var(--muted);font-size:13px}
+.linkbtn{white-space:nowrap;flex-shrink:0;border:0;background:none;color:var(--muted);font-size:13px;text-decoration:underline;text-underline-offset:3px;padding:0}
+h2{font-size:14px;font-weight:600;color:var(--muted);letter-spacing:.06em;margin:28px 0 10px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--card);border-radius:10px;padding:9px 14px;font-weight:600;text-decoration:none;color:var(--ink)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn[disabled]{opacity:.5;cursor:default}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+
+/* lock */
+.lock{padding:28px 22px;display:flex;flex-direction:column;gap:14px;max-width:420px;margin:40px auto 0}
+.lock h2{margin:0;color:var(--ink);font-size:18px;letter-spacing:0}
+.lock p{margin:0;color:var(--muted);font-size:14px}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field>span{font-size:13px;color:var(--muted)}
+.field input,.field select{border:1px solid var(--line);background:var(--bg);border-radius:9px;padding:9px 11px;width:100%;min-width:0}
+.err{color:var(--err);font-size:13px}
+
+/* trips */
+.trips{display:flex;flex-direction:column;gap:12px}
+.trip{padding:16px 16px 14px;display:flex;flex-direction:column;gap:10px}
+.trip .t{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.trip h3{margin:0;font-size:18px;font-weight:700;line-height:1.3}
+.badge{font-size:12px;font-weight:600;border-radius:999px;padding:1px 9px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.badge.now{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 45%,var(--line));background:color-mix(in srgb,var(--ok) 12%,transparent)}
+.badge.soon{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,var(--line));background:color-mix(in srgb,var(--warn) 12%,transparent)}
+.meta{display:flex;flex-wrap:wrap;gap:4px 14px;color:var(--muted);font-size:13.5px;font-variant-numeric:tabular-nums}
+.ppl{display:flex;flex-wrap:wrap;gap:6px}
+.ppl span{font-size:13px;background:var(--soft);border-radius:999px;padding:2px 10px}
+.bar{height:6px;border-radius:3px;background:var(--soft);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:3px}
+.acts{display:flex;flex-wrap:wrap;gap:8px}
+.acts .btn{padding:7px 12px;font-size:14px}
+.empty{padding:28px 18px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--ink);font-size:16px;margin-bottom:4px}
+.fab{position:fixed;right:16px;bottom:calc(18px + env(safe-area-inset-bottom,0px));border:0;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-weight:600;padding:13px 20px;box-shadow:0 6px 18px -6px rgba(58,47,38,.45);font-size:15px;z-index:10}
+@media (min-width:800px){.fab{right:calc(50% - 380px)}}
+
+/* create sheet */
+.modal{position:fixed;inset:0;z-index:20;background:rgba(30,25,20,.42);display:flex;align-items:flex-end;justify-content:center}
+@media (min-width:700px){.modal{align-items:center}}
+.dialog{background:var(--card);width:100%;max-width:560px;max-height:92vh;display:flex;flex-direction:column;border-radius:16px 16px 0 0}
+@media (min-width:700px){.dialog{border-radius:16px}}
+.dialog header{margin:0;padding:16px 18px;border-bottom:1px solid var(--line);align-items:center}
+.dialog header h2{margin:0;color:var(--ink);font-size:18px;letter-spacing:0}
+.dialog form{overflow:auto;padding:16px 18px;display:flex;flex-direction:column;gap:14px;min-height:0}
+.dialog footer{display:flex;gap:8px;padding:12px 18px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line)}
+.dialog footer .btn{flex:1}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hint{font-size:12.5px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--soft);border-radius:999px;padding:4px 11px;font-size:14px;display:inline-flex;align-items:center;gap:6px}
+.chip.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.chip .x{border:0;background:none;padding:0;font-size:14px;line-height:1;color:inherit;opacity:.75}
+.addrow{display:flex;gap:8px}
+.addrow input{flex:1;min-width:0;border:1px solid var(--line);background:var(--bg);border-radius:9px;padding:8px 11px}
+.need{outline:2px solid var(--err);outline-offset:4px;border-radius:8px}
+.done{display:flex;flex-direction:column;gap:12px;padding:6px 0}
+.done .url{font-size:13px;word-break:break-all;background:var(--soft);border-radius:8px;padding:8px 10px;color:var(--muted)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--card);padding:9px 14px;border-radius:10px;font-size:14px;z-index:40;max-width:calc(100% - 32px)}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>我的<b>旅遊</b>地圖</h1>
+      <div class="sub" id="sub">每一趟旅程都有自己的地圖，可以分開分享給同行的人</div>
+    </div>
+    <button type="button" class="linkbtn" id="logout" hidden>登出</button>
+  </header>
+
+  <section id="lock" class="card lock" hidden>
+    <h2 id="lockTitle">輸入密碼</h2>
+    <p id="lockText">主畫面可以看到所有旅程，也能建立新旅程，所以需要密碼。</p>
+    <label class="field"><span>密碼</span><input id="pin1" type="password" autocomplete="current-password" inputmode="text"></label>
+    <label class="field" id="pin2Box" hidden><span>再輸入一次</span><input id="pin2" type="password" autocomplete="new-password"></label>
+    <div class="err" id="lockErr" hidden></div>
+    <button type="button" class="btn primary" id="lockGo">進入</button>
+  </section>
+
+  <section id="main" hidden>
+    <div id="upcoming"></div>
+    <div id="past"></div>
+  </section>
+  <div id="loading" class="empty"><span class="spin"></span> 載入中…</div>
+</div>
+
+<button type="button" class="fab" id="fab" hidden>＋ 建立新旅程</button>
+
+<div class="modal" id="modal" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="cTitle">
+    <header><h2 id="cTitle">建立新旅程</h2></header>
+    <form id="form" novalidate>
+      <label class="field" id="titleBox"><span>標題 *</span><input id="c_title" maxlength="40" placeholder="例：2027 大阪五天四夜"></label>
+      <div class="two">
+        <label class="field"><span>國家／地區</span><select id="c_country"></select></label>
+        <label class="field"><span>城市</span><input id="c_city" maxlength="20" placeholder="例：大阪"></label>
+      </div>
+      <label class="field" id="otherBox" hidden><span>國家名稱</span><input id="c_otherCountry" maxlength="20" placeholder="例：冰島"></label>
+      <div class="two">
+        <label class="field"><span>出發日</span><input id="c_start" type="date"></label>
+        <label class="field"><span>回程日</span><input id="c_end" type="date"></label>
+      </div>
+      <span class="hint" id="daysHint">填日期會自動算出天數，行程分頁會照天數分好。還沒確定可以先留白（預設 3 天）。</span>
+      <div class="field" id="peopleBox">
+        <span>同行的人 *（每人會有自己的「想吃」「吃過」按鈕）</span>
+        <div class="chips" id="c_people"></div>
+        <div class="addrow"><input id="c_person" maxlength="8" placeholder="輸入名字，按「加入」" enterkeyhint="done"><button type="button" class="btn" id="c_addPerson">加入</button></div>
+      </div>
+      <label class="field"><span>住宿（選填，貼 Google 地圖連結）</span><input id="c_hotel" inputmode="url" placeholder="https://maps.app.goo.gl/…"></label>
+      <label class="field"><span>時區（用來判斷「營業中」，選國家會自動帶入）</span><select id="c_tz"></select></label>
+      <div class="err" id="cErr" hidden></div>
+      <div class="done" id="cDone" hidden></div>
+    </form>
+    <footer id="cFoot">
+      <button type="button" class="btn" id="cCancel">取消</button>
+      <button type="button" class="btn primary" id="cGo">建立</button>
+    </footer>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+"use strict";
+const SCRIPT_URL="https://script.google.com/macros/s/AKfycbx_iARq0eE6Pd2B7O78Df3pjRqkygORn623cFDKe5CQnGULJeM6I1KALTctvKPSEutNjw/exec";
+const LEGACY_ID="1V6pm0Qq2RDSsaduO5p4c1hOy9V2_aJjzhmDVqiwUL1Q";
+// [名稱, Google 地區代碼, 時區]
+const COUNTRIES=[["日本","jp","Asia/Tokyo"],["韓國","kr","Asia/Seoul"],["香港","hk","Asia/Hong_Kong"],["澳門","mo","Asia/Macau"],["台灣","tw","Asia/Taipei"],
+ ["泰國","th","Asia/Bangkok"],["新加坡","sg","Asia/Singapore"],["馬來西亞","my","Asia/Kuala_Lumpur"],["越南","vn","Asia/Ho_Chi_Minh"],["菲律賓","ph","Asia/Manila"],
+ ["印尼","id","Asia/Makassar"],["中國","cn","Asia/Shanghai"],["美國","us","America/Los_Angeles"],["英國","gb","Europe/London"],["法國","fr","Europe/Paris"],
+ ["義大利","it","Europe/Rome"],["西班牙","es","Europe/Madrid"],["德國","de","Europe/Berlin"],["瑞士","ch","Europe/Zurich"],["澳洲","au","Australia/Sydney"],["紐西蘭","nz","Pacific/Auckland"],["其他","",""]];
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
+const lsSet=(k,v)=>{try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}};
+let toastT;function toast(m){const t=$("toast");t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,2400)}
+const base=location.href.replace(/[^/]*([?#].*)?$/,"");
+const tripUrl=id=>id===LEGACY_ID?base:base+"?trip="+encodeURIComponent(id);
+const sheetUrl=id=>"https://docs.google.com/spreadsheets/d/"+id+"/edit";
+
+async function api(action,params){
+  const qs=new URLSearchParams(Object.assign({action},params||{}));
+  const res=await fetch(SCRIPT_URL+"?"+qs.toString(),{redirect:"follow",credentials:"omit"});
+  const j=await res.json();if(!j.ok)throw new Error(j.error||"失敗");return j;
+}
+let PIN=lsGet("trips-pin")||"";
+
+// ---------- 密碼 ----------
+let firstTime=false;
+function showLock(first,msg){
+  firstTime=first;$("loading").hidden=true;$("main").hidden=true;$("fab").hidden=true;$("logout").hidden=true;$("lock").hidden=false;
+  $("lockTitle").textContent=first?"第一次使用：設定密碼":"輸入密碼";
+  $("lockText").textContent=first?"主畫面可以看到所有旅程，也能建立新旅程，先設一組密碼（至少 4 個字）。分享給朋友的旅程頁不需要密碼。":"主畫面可以看到所有旅程，也能建立新旅程，所以需要密碼。";
+  $("pin2Box").hidden=!first;$("lockGo").textContent=first?"設定並進入":"進入";
+  $("lockErr").hidden=!msg;$("lockErr").textContent=msg||"";
+  setTimeout(()=>$("pin1").focus(),50);
+}
+$("lockGo").onclick=async()=>{
+  const a=$("pin1").value.trim(),b=$("pin2").value.trim();
+  const err=m=>{$("lockErr").textContent=m;$("lockErr").hidden=false};
+  if(a.length<4)return err("密碼至少 4 個字。");
+  if(firstTime&&a!==b)return err("兩次輸入的密碼不一樣。");
+  $("lockGo").disabled=true;
+  try{if(firstTime)await api("setPin",{pin:a});PIN=a;await loadTrips(true)}
+  catch(e){err(e.message==="密碼錯誤"?"密碼不對，再試一次。":"失敗："+e.message)}
+  finally{$("lockGo").disabled=false}
+};
+["pin1","pin2"].forEach(id=>$(id).addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();$("lockGo").click()}}));
+$("logout").onclick=()=>{PIN="";lsSet("trips-pin",null);$("pin1").value="";$("pin2").value="";showLock(false)};
+
+// ---------- 旅程列表 ----------
+let TRIPS=[];
+const today=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+function dateRange(t){
+  if(!t.start)return t.days?t.days+" 天":"";
+  const f=s=>{const [y,m,d]=s.split("-").map(Number);return {y,m,d}};
+  const a=f(t.start);let out=a.y+"/"+a.m+"/"+a.d;
+  if(t.end){const b=f(t.end);out+="–"+(b.y!==a.y?b.y+"/":"")+b.m+"/"+b.d;
+    const n=Math.round((new Date(t.end)-new Date(t.start))/864e5)+1;if(n>0)out+=" · "+n+" 天"}
+  return out;
+}
+function phase(t){const td=today();if(!t.start)return "plan";if(t.end&&t.end<td)return "past";if(t.start<=td)return "now";return "soon"}
+function card(t){
+  const ph=phase(t);
+  const badge=ph==="now"?'<span class="badge now">旅行中</span>':ph==="soon"?(()=>{const n=Math.round((new Date(t.start)-new Date(today()))/864e5);return `<span class="badge soon">${n<=1?"明天出發":n+" 天後出發"}</span>`})():ph==="plan"?'<span class="badge">還沒定日期</span>':"";
+  const ppl=String(t.people||"").split(/[、,，\s]+/).filter(Boolean);
+  const pct=t.places?Math.round(t.done/t.places*100):0;
+  return `<article class="card trip">
+    <div class="t"><h3>${esc(t.title||"未命名旅程")}</h3>${badge}</div>
+    <div class="meta">${[t.country,t.city].filter((x,i,a)=>x&&a.indexOf(x)===i).map(esc).join(" · ")?`<span>${[t.country,t.city].filter((x,i,a)=>x&&a.indexOf(x)===i).map(esc).join(" · ")}</span>`:""}${dateRange(t)?`<span>${esc(dateRange(t))}</span>`:""}<span>${t.places} 個地點 · 去過 ${t.done}</span></div>
+    ${t.places?`<div class="bar" aria-label="去過 ${pct}%"><i style="width:${pct}%"></i></div>`:""}
+    ${ppl.length?`<div class="ppl">${ppl.map(p=>`<span>${esc(p)}</span>`).join("")}</div>`:""}
+    ${t.error?`<div class="err">${esc(t.error)}</div>`:""}
+    <div class="acts"><a class="btn primary" href="${esc(tripUrl(t.id))}">打開地圖</a><button type="button" class="btn" data-copy="${esc(t.id)}">複製分享連結</button><a class="btn" href="${esc(sheetUrl(t.id))}" target="_blank" rel="noopener">試算表 ↗</a></div>
+  </article>`;
+}
+function render(){
+  const up=TRIPS.filter(t=>phase(t)!=="past").sort((a,b)=>(a.start||"9999").localeCompare(b.start||"9999")||b.created-a.created);
+  const past=TRIPS.filter(t=>phase(t)==="past").sort((a,b)=>b.start.localeCompare(a.start));
+  $("upcoming").innerHTML=`<h2>即將出發・規劃中</h2>`+(up.length?`<div class="trips">${up.map(card).join("")}</div>`:`<div class="card empty"><b>還沒有新的旅程</b>按右下角「＋ 建立新旅程」開始規劃下一趟。</div>`);
+  $("past").innerHTML=past.length?`<h2>過去的旅程</h2><div class="trips">${past.map(card).join("")}</div>`:"";
+  $("sub").textContent="共 "+TRIPS.length+" 趟旅程。每趟都有自己的地圖和網址，分享給當次同行的人就好。";
+}
+document.addEventListener("click",e=>{
+  const c=e.target.closest("[data-copy]");if(!c)return;
+  const url=tripUrl(c.dataset.copy);
+  const ok=()=>toast("已複製，貼給同行的人就能看");
+  try{navigator.clipboard.writeText(url).then(ok,()=>prompt("複製這個網址",url))}catch(x){prompt("複製這個網址",url)}
+});
+async function loadTrips(fromLock){
+  $("loading").hidden=false;
+  try{
+    const j=await api("list",{pin:PIN});
+    TRIPS=j.trips||[];lsSet("trips-pin",PIN);
+    $("lock").hidden=true;$("loading").hidden=true;$("main").hidden=false;$("fab").hidden=false;$("logout").hidden=false;
+    render();
+  }catch(e){
+    $("loading").hidden=true;
+    if(e.message==="NO_PIN")return showLock(true);
+    if(e.message==="密碼錯誤"){lsSet("trips-pin",null);if(fromLock)throw e;return showLock(false)}
+    if(fromLock)throw e;
+    showLock(false,"讀不到旅程列表："+e.message);
+  }
+}
+
+// ---------- 建立新旅程 ----------
+let PEOPLE=[];
+$("c_country").innerHTML=COUNTRIES.map(([n])=>`<option>${n}</option>`).join("");
+const tzs=(()=>{try{return Intl.supportedValuesOf("timeZone")}catch(e){return [...new Set(COUNTRIES.map(c=>c[2]).filter(Boolean).concat(["Asia/Taipei"]))]}})();
+$("c_tz").innerHTML=tzs.map(z=>`<option>${z}</option>`).join("");
+function syncCountry(){const c=COUNTRIES.find(x=>x[0]===$("c_country").value);$("otherBox").hidden=c[0]!=="其他";if(c[2])$("c_tz").value=c[2];
+  if(c[0]==="香港"||c[0]==="澳門"||c[0]==="新加坡")$("c_city").placeholder="例："+c[0];else $("c_city").placeholder="例：大阪"}
+$("c_country").onchange=syncCountry;
+function renderPeople(){$("c_people").innerHTML=PEOPLE.map((p,i)=>`<span class="chip on">${esc(p)}<button type="button" class="x" data-rm="${i}" aria-label="移除 ${esc(p)}">✕</button></span>`).join("")||'<span class="hint">還沒加人</span>'}
+$("c_people").onclick=e=>{const b=e.target.closest("[data-rm]");if(b){PEOPLE.splice(+b.dataset.rm,1);renderPeople()}};
+function addPerson(){const v=$("c_person").value.trim();if(!v)return;v.split(/[、,，\s]+/).filter(Boolean).forEach(x=>{if(!PEOPLE.includes(x))PEOPLE.push(x)});$("c_person").value="";renderPeople();$("peopleBox").classList.remove("need")}
+$("c_addPerson").onclick=addPerson;
+$("c_person").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();addPerson()}});
+function openCreate(){
+  ["c_title","c_city","c_otherCountry","c_start","c_end","c_hotel","c_person"].forEach(id=>$(id).value="");
+  try{PEOPLE=JSON.parse(lsGet("trips-lastPeople")||"[]")}catch(e){PEOPLE=[]}
+  $("c_country").value="日本";syncCountry();renderPeople();
+  $("cErr").hidden=true;$("cDone").hidden=true;$("cFoot").hidden=false;
+  [...$("form").children].forEach(el=>{if(el.id!=="cDone"&&el.id!=="cErr")el.hidden=el.id==="otherBox"?$("otherBox").hidden:false});
+  $("modal").hidden=false;setTimeout(()=>$("c_title").focus(),50);
+}
+const HINT0=$("daysHint").textContent;
+function syncDays(){const s=$("c_start").value,e=$("c_end").value;
+  if(s&&e){const n=Math.round((new Date(e)-new Date(s))/864e5)+1;$("daysHint").textContent=n>0?`共 ${n} 天，行程會分成 Day 1～Day ${n}。`:"回程日比出發日早，請檢查日期。"}
+  else $("daysHint").textContent=HINT0}
+["c_start","c_end"].forEach(id=>$(id).addEventListener("input",syncDays));
+$("c_start").addEventListener("change",()=>{if(!$("c_end").value||$("c_end").value<$("c_start").value)$("c_end").value=$("c_start").value;$("c_end").min=$("c_start").value;syncDays()});
+$("fab").onclick=()=>{openCreate();syncDays()};
+$("c_title").addEventListener("input",()=>{$("titleBox").classList.remove("need");$("cErr").hidden=true});
+$("cCancel").onclick=()=>$("modal").hidden=true;
+$("modal").addEventListener("click",e=>{if(e.target.id==="modal")$("modal").hidden=true});
+$("cGo").onclick=async()=>{
+  const err=(m,box)=>{$("cErr").textContent=m;$("cErr").hidden=false;if(box){$(box).classList.add("need");$(box).scrollIntoView({behavior:"smooth",block:"center"})}};
+  ["titleBox","peopleBox"].forEach(b=>$(b).classList.remove("need"));
+  if($("c_person").value.trim())addPerson();
+  const title=$("c_title").value.trim();if(!title)return err("請填標題。","titleBox");
+  if(!PEOPLE.length)return err("請至少加一位同行的人（可以只有你自己）。","peopleBox");
+  const c=COUNTRIES.find(x=>x[0]===$("c_country").value);
+  const country=c[0]==="其他"?$("c_otherCountry").value.trim():c[0];
+  const start=$("c_start").value,end=$("c_end").value;
+  if(start&&end&&end<start)return err("回程日比出發日早，請檢查日期。");
+  const data={title,country,city:$("c_city").value.trim()||(["香港","澳門","新加坡"].includes(country)?country:""),region:c[1],tz:$("c_tz").value,start,end,people:PEOPLE,hotel:$("c_hotel").value.trim()};
+  $("cErr").hidden=true;const b=$("cGo");b.disabled=true;b.innerHTML='<span class="spin"></span> 建立中…';
+  try{
+    const r=await api("create",{pin:PIN,data:JSON.stringify(data)});
+    lsSet("trips-lastPeople",JSON.stringify(PEOPLE));
+    const url=tripUrl(r.id);
+    [...$("form").children].forEach(el=>{if(el.id!=="cDone")el.hidden=true});
+    $("cDone").hidden=false;$("cFoot").hidden=true;
+    $("cDone").innerHTML=`<b style="font-size:17px">「${esc(title)}」建立好了</b>
+      <span class="hint">把這個網址分享給同行的人，大家就能一起加地點、按想吃。</span>
+      <div class="url">${esc(url)}</div>
+      <div class="acts"><a class="btn primary" href="${esc(url)}">打開地圖</a><button type="button" class="btn" data-copy="${esc(r.id)}">複製分享連結</button><button type="button" class="btn" id="cClose">回到列表</button></div>`;
+    $("cClose").onclick=()=>$("modal").hidden=true;
+    loadTrips(false);
+  }catch(e){err("建立失敗："+e.message)}
+  finally{b.disabled=false;b.textContent="建立"}
+};
+
+// ---------- 開始 ----------
+(async()=>{
+  try{
+    const s=await api("pinStatus");
+    if(!s.hasPin)return showLock(true);
+    if(!PIN)return showLock(false);
+    await loadTrips(false);
+  }catch(e){$("loading").innerHTML="連不上後台："+esc(e.message)+"。請稍後重新整理。"}
+})();
+})();
+</script>
+</body>
+</html>
