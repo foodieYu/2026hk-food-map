@@ -394,6 +394,7 @@ a.fab{text-decoration:none;display:inline-block}
       </div>
       <label class="f"><span>必吃</span><input id="f_must" maxlength="80" placeholder="例：菠蘿油、奶茶"></label>
       <label class="f"><span>備註</span><input id="f_note" maxlength="200" placeholder="例：要排隊、只收現金"></label>
+      <label class="f"><span>來源（IG、小紅書、文章連結，可以貼好幾個，一行一個）</span><textarea id="f_src" rows="2" maxlength="1000" placeholder="https://www.instagram.com/p/…" style="resize:vertical;font:inherit;font-size:13.5px"></textarea></label>
       <div class="f"><span>誰想吃（可多選）</span><div class="people" id="f_people"></div></div>
       <div class="f"><span>誰吃過了（可多選）</span><div class="people ate" id="f_ate"></div></div>
       <div class="f"><span>排進哪一天</span><div class="chipwrap" id="f_day"></div></div>
@@ -452,6 +453,12 @@ const SRC_LINKS={"IG 貼文 1":"https://www.instagram.com/p/DDLuoEOSj1v/","IG �
 const GROUPS={hk:{label:"港式餐館",v:"--g-hk"},snack:{label:"街頭小吃",v:"--g-snack"},sweet:{label:"甜品・麵包",v:"--g-sweet"},drink:{label:"咖啡・飲品",v:"--g-drink"},gift:{label:"手信",v:"--g-gift"},sight:{label:"景點",v:"--g-sight"},shop:{label:"購物",v:"--g-shop"},other:{label:"其他",v:"--g-other"}};
 const CATS=[["茶餐廳","hk","茶"],["點心","hk","點"],["燒味","hk","燒"],["粉麵","hk","麵"],["正餐","hk","餐"],["火鍋","hk","鍋"],["速食","hk","炸"],["小吃","snack","食"],["甜品","sweet","甜"],["麵包・蛋撻","sweet","包"],["咖啡","drink","啡"],["飲品","drink","飲"],["手信","gift","禮"],["景點","sight","景"],["購物","shop","購"]];
 const CAT={};CATS.forEach(([k,g,ch])=>CAT[k]={g,ch});
+const srcSplit=v=>String(v||"").split(/[、，\n]+|,\s+|\s+(?=https?:)/).map(x=>x.trim()).filter(x=>x&&x!=="網頁新增");
+function srcLabel(u){try{const x=new URL(u),h=x.hostname.replace(/^www\.|^m\./,""),seg=x.pathname.split("/").filter(Boolean);
+  if(/instagram\.com$/.test(h)){if(seg[0]==="p")return"IG 貼文";if(seg[0]==="reel"||seg[0]==="reels")return"IG Reels";if(seg[0]==="stories")return"IG 限動";return seg[0]?"@"+seg[0]:"Instagram"}
+  if(/xiaohongshu\.com$|xhslink\.com$/.test(h))return"小紅書";if(/threads\.(net|com)$/.test(h))return seg[0]?seg[0]+" (Threads)":"Threads";
+  if(/youtube\.com$|youtu\.be$/.test(h))return"YouTube";if(/tiktok\.com$/.test(h))return"TikTok";if(/facebook\.com$|fb\.watch$/.test(h))return"Facebook";
+  return h}catch(e){return u}}
 const catInfo=c=>CAT[c]||{g:"other",ch:(c||"？").charAt(0)};
 const ateDone=s=>(s.ate||[]).length>0&&((s.wants||[]).length?s.wants.every(p=>s.ate.includes(p)):true);
 const wantsIt=s=>(s.wants||[]).length>0||s.status==="want";
@@ -736,7 +743,7 @@ function renderSheet(){
     el.hidden=false;return}
   const s=S.byId[S.sel];if(!s){el.hidden=true;return}
   const st=status(s);const h=fromHotel(s);
-  const srcs=s.src?s.src.split(/[、,，]/).map(x=>x.trim()).filter(Boolean).map(x=>SRC_LINKS[x]?`<a href="${SRC_LINKS[x]}" target="_blank" rel="noopener">${esc(x)} ↗</a>`:`<span>${esc(x)}</span>`).join(""):"";
+  const srcs=srcSplit(s.src).map(x=>/^https?:\/\//i.test(x)?`<a href="${esc(x)}" target="_blank" rel="noopener">${esc(srcLabel(x))} ↗</a>`:SRC_LINKS[x]?`<a href="${SRC_LINKS[x]}" target="_blank" rel="noopener">${esc(x)} ↗</a>`:`<span>${esc(x)}</span>`).join("");
   el.innerHTML=`<div class="grab"></div>
   <div class="sh-head">${glyph(s)}<div style="min-width:0"><h2>${esc(s.name)}</h2><div class="meta" style="margin-top:4px"><span class="pill ${st.k}">${esc(st.t)}</span><span>${esc(s.cat)} · ${esc(s.area)}</span></div></div><button type="button" class="x" id="shClose" aria-label="關閉">✕</button></div>
   <div class="body">
@@ -938,7 +945,7 @@ function openForm(shop){
     ate:new Set(e?e.ate||[]:[]),wants:new Set(e?e.wants||[]:(lsGet(KEY("by"))&&PEOPLE.includes(lsGet(KEY("by")))?[lsGet(KEY("by"))]:[])),day:e?e.day||"":"",lat:e?e.lat:null,lng:e?e.lng:null,link:e?e.link:""});
   $("f_url").value="";$("f_name").value=e?e.name:"";$("f_addr").value=e?e.addr:"";
   $("f_open").value=e&&e.raw?e.raw.open:"";$("f_close").value=e&&e.raw?e.raw.close:"";
-  $("f_must").value=e?e.must:"";$("f_note").value=e?e.note:"";
+  $("f_must").value=e?e.must:"";$("f_note").value=e?e.note:"";$("f_src").value=e?srcSplit(e.src).join("\n"):"";
   $("f_by").value=e?(PEOPLE.includes(e.by)?e.by:""):(lsGet(KEY("by"))||"");
   FF.hoursSnap=$("f_open").value+"|"+$("f_close").value+"|"+[...FF.closed].sort().join("");
   $("formTitle").textContent=(e?"編輯":"新增")+NOUN.item;$("f_save").textContent=e?"儲存修改":"新增到清單";
@@ -986,11 +993,11 @@ $("f_save").onclick=async()=>{
   const d={"店名":name,"類型":FF.cat,"區域":FF.area||"其他","地址":$("f_addr").value.trim(),"緯度":FF.lat==null?"":FF.lat,"經度":FF.lng==null?"":FF.lng,
     "Google 地圖連結":FF.link,"開門":o,"打烊":c,"公休日":closed,
     "營業時間說明":o&&c?((closed?"":"每日 ")+o+"–"+c+(closed?"，週"+[...closed].join("、")+"休":"")):"營業時間待確認",
-    "必吃":$("f_must").value.trim(),"備註":$("f_note").value.trim(),"來源":"網頁新增","狀態":FF.ate.size?"吃過":(FF.wants.size?"想吃":""),"想吃的人":PEOPLE.filter(p=>FF.wants.has(p)).join("、"),"吃過的人":PEOPLE.filter(p=>FF.ate.has(p)).join("、"),"哪一天":DAY_TEXT[FF.day],"新增者":by,"標籤":[...FF.tags].join("、")};
+    "必吃":$("f_must").value.trim(),"備註":$("f_note").value.trim(),"來源":srcSplit($("f_src").value).join("、"),"狀態":FF.ate.size?"吃過":(FF.wants.size?"想吃":""),"想吃的人":PEOPLE.filter(p=>FF.wants.has(p)).join("、"),"吃過的人":PEOPLE.filter(p=>FF.ate.has(p)).join("、"),"哪一天":DAY_TEXT[FF.day],"新增者":by,"標籤":[...FF.tags].join("、")};
   const b=$("f_save");b.disabled=true;
   try{
     if(FF.editing){
-      const ed=FF.editing;delete d["來源"];if(!by)delete d["新增者"];
+      const ed=FF.editing;if(!by)delete d["新增者"];
       const snap=o+"|"+c+"|"+[...FF.closed].sort().join("");
       if(snap===FF.hoursSnap){delete d["開門"];delete d["打烊"];delete d["公休日"];delete d["營業時間說明"]}
       await api("update",{data:JSON.stringify({row:ed.row,id:ed.id,fields:d})});
